@@ -1,6 +1,6 @@
 const { Sequelize } = require("sequelize");
 
-const sequelize = new Sequelize("musDB", "musLear", "7777", {
+const sequelize = new Sequelize("musDB", "hinaouiDB", "7777", {
   host: "localhost",
   dialect: "mssql",
   dialectOptions: {

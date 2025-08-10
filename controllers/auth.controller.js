@@ -1,11 +1,12 @@
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { userMUS, roleMUS } = require("../models");
-
+const generateToken = require("../middleware/generateToken");
+const blacklistedRefreshTokens = new Set();
 require("dotenv").config();
 
-exports.login = async (req, res) => {
-  let redirect;
+const login = async (req, res) => {
+  var redirect;
   try {
     const { username, password } = req.body;
 
@@ -23,16 +24,12 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "Mot de passe incorrect." });
     }
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET_KEY, {
-      expiresIn: 86400, // 24h
-    });
-
     switch (user.roleMUS.name) {
       case "Admin":
         redirect = "/admin";
         break;
-      case "'ROLE_DEMANDEUR'":
-        redirect = "/demandeur";
+      case "ROLE_DEMANDEUR":
+        redirect = "/demandeur/cree_demande";
         break;
       case "ROLE_AGENT_MUS":
         redirect = "/agent";
@@ -42,22 +39,29 @@ exports.login = async (req, res) => {
         break;
     }
 
-    const accessToken = jwt.sign({ id: user.id }, process.env.JWT_SECRET_KEY, {
-      expiresIn: "1d",
-    });
+    const token = generateToken(user);
 
+    // Generate refresh token
     const refreshToken = jwt.sign(
-      { id: user.id },
+      {
+        id: user.id,
+        roleMUS: user.roleMUS.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        redirection: redirect,
+      },
       process.env.JWT_REFRESH_SECRET_KEY,
       { expiresIn: "7d" }
     );
 
+    // Set refresh token on coockies http-only
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+    // End refresh token
 
     return res.status(200).json({
       id: user.id,
@@ -65,6 +69,8 @@ exports.login = async (req, res) => {
       roleMUS: user.roleMUS.name,
       accessToken: token,
       redirect: redirect,
+      firstName: user.firstName,
+      lastName: user.lastName,
     });
   } catch (error) {
     console.error("Erreur lors du login:", error);
@@ -74,7 +80,7 @@ exports.login = async (req, res) => {
   }
 };
 
-exports.signUp = async (req, res) => {
+const signUp = async (req, res) => {
   try {
     const salt = bcrypt.genSaltSync(10);
     const hashedPassword = await bcrypt.hash(req.body.password, salt);
@@ -104,8 +110,9 @@ exports.signUp = async (req, res) => {
   }
 };
 
-exports.refreshAccessToken = (req, res) => {
+const refreshAccessToken = (req, res) => {
   const refreshToken = req.cookies.refreshToken;
+
   if (!refreshToken)
     return res.status(401).json({ message: "No refresh token" });
 
@@ -117,15 +124,46 @@ exports.refreshAccessToken = (req, res) => {
         return res.status(403).json({ message: "Invalid refresh token" });
 
       const user = await userMUS.findByPk(decoded.id);
+      const _roleMUS = await roleMUS.findByPk(user.id_roleMUS);
       if (!user) return res.status(404).json({ message: "User not found" });
+      console.log(decoded);
 
       const newAccessToken = jwt.sign(
-        { id: user.id },
+        {
+          id: user.id,
+          roleMUS: _roleMUS,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          redirection: decoded.redirection,
+        },
         process.env.JWT_SECRET_KEY,
-        { expiresIn: "15m" }
+        { expiresIn: 86400 }
       );
 
-      res.status(200).json({ accessToken: newAccessToken });
+      res.status(200).json({
+        accessToken: newAccessToken,
+        roleMUS: _roleMUS.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        redirection: decoded.redirection,
+      });
     }
   );
 };
+
+const logout = (req, res) => {
+  const token = req.headers.authorization?.split(" ")[1];
+  const refreshToken = req.cookies.refreshToken;
+  if (refreshToken && token) {
+    blacklistedRefreshTokens.add(refreshToken);
+
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: true,
+      sameSite: "lax",
+    });
+  }
+  return res.status(200).json({ message: "Déconnecté, token blacklisté" });
+};
+
+module.exports = { logout, signUp, login, refreshAccessToken };
