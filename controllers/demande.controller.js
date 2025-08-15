@@ -15,64 +15,9 @@ const createDemande = async (req, res) => {
   } = req.body;
 
   try {
-    const sequanceFromDB = await planCoupe.findOne({
-      where: { sequence },
-    });
+    const sequanceFromDB = await planCoupe.findOne({ where: { sequence } });
 
-    let statusDemande = "";
-    if (!sequanceFromDB) {
-      statusDemande = "Hors stock";
-      const newDemande = await demandeMUS.create({
-        id_userMUS,
-        id_site,
-        id_projet,
-        id_lieuDetection,
-        id_planCoupe: sequanceFromDB ? sequanceFromDB.id : null,
-        statusDemande: statusDemande,
-      });
-    }
-
-    for (const sub of subDemandes) {
-      let disponible = 0;
-      let gammeFromDB;
-      let patternFromDB;
-
-      if (sequanceFromDB) {
-        gammeFromDB = await gamme.findOne({
-          where: {
-            partNumber: sub.partNumber,
-            id_planCoupe: sequanceFromDB.id,
-          },
-        });
-
-        if (gammeFromDB) {
-          patternFromDB = await pattern.findOne({
-            where: {
-              patternNumb: sub.patternNumb,
-              id_gamme: gammeFromDB.id,
-            },
-          });
-
-          if (patternFromDB) {
-            disponible = 1;
-            statusDemande = "En cours";
-
-            const newSub = await subDemandeMUS.create({
-              id_demandeMUS: newDemande.id,
-              id_gamme: gammeFromDB.id,
-              id_pattern: patternFromDB.id,
-              code_defaut: sub.code_defaut || null,
-              typeDefaut: sub.typeDefaut || null,
-              disponible,
-            });
-
-            await newSub.update({
-              numSubDemande: `${newDemande.numDemande}-${newSub.id}`,
-            });
-          }
-        }
-      }
-    }
+    let statusDemande = sequanceFromDB ? "En cours" : "Hors stock";
 
     const newDemande = await demandeMUS.create({
       id_userMUS,
@@ -80,8 +25,52 @@ const createDemande = async (req, res) => {
       id_projet,
       id_lieuDetection,
       id_planCoupe: sequanceFromDB ? sequanceFromDB.id : null,
-      statusDemande: statusDemande,
+      statusDemande,
     });
+
+    const subDemandeData = [];
+
+    for (const sub of subDemandes) {
+      let disponible = 0;
+      let id_gamme = null;
+      let id_pattern = null;
+
+      if (sequanceFromDB) {
+        const gammeFromDB = await gamme.findOne({
+          where: { partNumber: sub.partNumber, id_planCoupe: sequanceFromDB.id },
+        });
+
+        if (gammeFromDB) {
+          const patternFromDB = await pattern.findOne({
+            where: { patternNumb: sub.patternNumb, id_gamme: gammeFromDB.id },
+          });
+
+          if (patternFromDB) {
+            disponible = 1;
+            id_gamme = gammeFromDB.id;
+            id_pattern = patternFromDB.id;
+          }
+        }
+      }
+
+      subDemandeData.push({
+        id_demandeMUS: newDemande.id,
+        id_gamme,
+        id_pattern,
+        code_defaut: sub.code_defaut || null,
+        typeDefaut: sub.typeDefaut || null,
+        disponible,
+        numSubDemande: "",
+      });
+    }
+
+    const createdSubDemandes = await subDemandeMUS.bulkCreate(subDemandeData, { returning: true });
+
+    await Promise.all(
+      createdSubDemandes.map((sub) =>
+        sub.update({ numSubDemande: `${newDemande.numDemande}-${sub.id}` })
+      )
+    );
 
     const createdDemande = await demandeMUS.findOne({
       where: { id: newDemande.id },
