@@ -16,6 +16,7 @@ const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 
 app.use("/api/auth", require("./routes/auth.routes"));
+app.use("/api/demande", require("./routes/demande.route"));
 
 
 const PORT = 3000;

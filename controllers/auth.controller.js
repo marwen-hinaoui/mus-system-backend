@@ -39,7 +39,7 @@ const login = async (req, res) => {
         break;
     }
 
-    const token = generateToken(user);
+    const token = generateToken(user, user.roleMUS.name);
 
     // Generate refresh token
     const refreshToken = jwt.sign(
