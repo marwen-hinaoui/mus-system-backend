@@ -15,9 +15,9 @@ const createDemande = async (req, res) => {
   } = req.body;
 
   try {
-    const sequanceFromDB = await planCoupe.findOne({ where: { sequence } });
+    const subDemandeData = [];
 
-    let statusDemande = sequanceFromDB ? "En cours" : "Hors stock";
+    const sequanceFromDB = await planCoupe.findOne({ where: { sequence } });
 
     const newDemande = await demandeMUS.create({
       id_userMUS,
@@ -25,19 +25,47 @@ const createDemande = async (req, res) => {
       id_projet,
       id_lieuDetection,
       id_planCoupe: sequanceFromDB ? sequanceFromDB.id : null,
-      statusDemande,
+      statusDemande: "Hors stock",
     });
 
-    const subDemandeData = [];
+    if (!sequanceFromDB) {
+      await subDemandeMUS.bulkCreate(
+        subDemandes.map((item) => ({
+          ...item,
+          id_demandeMUS: newDemande.id,
+        }))
+      );
 
-    for (const sub of subDemandes) {
-      let disponible = 0;
-      let id_gamme = null;
-      let id_pattern = null;
+      const createdSubDemandes = await subDemandeMUS.findAll({
+        where: { id_demandeMUS: newDemande.id },
+      });
 
-      if (sequanceFromDB) {
+      await Promise.all(
+        createdSubDemandes.map((sub, count) =>
+          sub.update({ numSubDemande: `${newDemande.numDemande}-${count + 1}` })
+        )
+      );
+
+      const createdDemande = await demandeMUS.findOne({
+        where: { id: newDemande.id },
+        include: [{ model: subDemandeMUS, as: "subDemandeMUS" }],
+      });
+
+      return res.status(201).json({
+        message: "Détails demande Hors stock! faire demande PLS",
+        data: createdDemande,
+      });
+    } else {
+      for (const sub of subDemandes) {
+        let disponible = 0;
+        let id_gamme = null;
+        let id_pattern = null;
+
         const gammeFromDB = await gamme.findOne({
-          where: { partNumber: sub.partNumber, id_planCoupe: sequanceFromDB.id },
+          where: {
+            partNumber: sub.partNumber,
+            id_planCoupe: sequanceFromDB.id,
+          },
         });
 
         if (gammeFromDB) {
@@ -46,38 +74,50 @@ const createDemande = async (req, res) => {
           });
 
           if (patternFromDB) {
+            await demandeMUS.update(
+              { statusDemande: "En cours" },
+              { where: { id: newDemande.id } }
+            );
             disponible = 1;
+
             id_gamme = gammeFromDB.id;
             id_pattern = patternFromDB.id;
           }
         }
+
+        subDemandeData.push({
+          id_demandeMUS: newDemande.id,
+          id_gamme,
+          id_pattern,
+          code_defaut: sub.code_defaut || null,
+          typeDefaut: sub.typeDefaut || null,
+          disponible,
+          numSubDemande: "",
+        });
       }
 
-      subDemandeData.push({
-        id_demandeMUS: newDemande.id,
-        id_gamme,
-        id_pattern,
-        code_defaut: sub.code_defaut || null,
-        typeDefaut: sub.typeDefaut || null,
-        disponible,
-        numSubDemande: "",
+      const createdSubDemandes = await subDemandeMUS.bulkCreate(
+        subDemandeData,
+        {
+          returning: true,
+        }
+      );
+
+      await Promise.all(
+        createdSubDemandes.map((sub, count) =>
+          sub.update({ numSubDemande: `${newDemande.numDemande}-${count + 1}` })
+        )
+      );
+      const createdDemande = await demandeMUS.findOne({
+        where: { id: newDemande.id },
+        include: [{ model: subDemandeMUS, as: "subDemandeMUS" }],
+      });
+
+      return res.status(201).json({
+        message: "Piéce diponible au stock! Visitez le stock hopital",
+        data: createdDemande,
       });
     }
-
-    const createdSubDemandes = await subDemandeMUS.bulkCreate(subDemandeData, { returning: true });
-
-    await Promise.all(
-      createdSubDemandes.map((sub) =>
-        sub.update({ numSubDemande: `${newDemande.numDemande}-${sub.id}` })
-      )
-    );
-
-    const createdDemande = await demandeMUS.findOne({
-      where: { id: newDemande.id },
-      include: [{ model: subDemandeMUS, as: "subDemandeMUS" }],
-    });
-
-    return res.status(201).json(createdDemande);
   } catch (error) {
     console.error(error);
     return res.status(500).json({
