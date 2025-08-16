@@ -92,6 +92,7 @@ const createDemande = async (req, res) => {
           code_defaut: sub.code_defaut || null,
           typeDefaut: sub.typeDefaut || null,
           disponible,
+          quantite: sub.quantite,
           numSubDemande: "",
         });
       }

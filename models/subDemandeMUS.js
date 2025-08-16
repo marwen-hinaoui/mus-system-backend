@@ -34,6 +34,10 @@ const subDemandeMUS = sequelize.define(
       type: DataTypes.BOOLEAN,
       allowNull: true,
     },
+    quantite: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     tableName: "subDemandeMUS",
