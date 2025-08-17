@@ -141,6 +141,7 @@ const refreshAccessToken = (req, res) => {
       );
 
       res.status(200).json({
+        id: user.id,
         accessToken: newAccessToken,
         roleMUS: _roleMUS.name,
         firstName: user.firstName,
