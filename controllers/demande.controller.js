@@ -28,6 +28,7 @@ const createDemande = async (req, res) => {
       id_projet,
       id_lieuDetection,
       id_planCoupe: sequanceFromDB ? sequanceFromDB.id : null,
+      sequenceHorsStock: sequence,
       statusDemande: "Hors stock",
     });
 
@@ -146,7 +147,13 @@ const getDemande = async (req, res) => {
         "date_creation",
         [Sequelize.col("projet.nom"), "projetNom"],
         [Sequelize.col("site.nom"), "siteNom"],
-        [Sequelize.col("planCoupe.sequence"), "Sequence"],
+        [
+          Sequelize.literal(`CASE
+        WHEN demandeMUS.statusDemande = 'Hors stock' THEN demandeMUS.sequenceHorsStock
+        ELSE planCoupe.sequence
+      END`),
+          "Sequence",
+        ],
       ],
       include: [
         { model: site, attributes: [], as: "site" },
@@ -156,7 +163,7 @@ const getDemande = async (req, res) => {
           attributes: [],
           as: "planCoupe",
         },
-        { model: subDemandeMUS, as: "subDemandeMUS" }, // Include all subDemandeMUS
+        { model: subDemandeMUS, as: "subDemandeMUS" },
       ],
     });
 

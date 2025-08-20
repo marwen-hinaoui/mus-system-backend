@@ -37,6 +37,9 @@ const demandeMUS = sequelize.define(
     statusDemande: {
       type: DataTypes.STRING(12),
     },
+    sequenceHorsStock: {
+      type: DataTypes.STRING(12),
+    },
 
     date_creation: {
       type: DataTypes.DATEONLY,
