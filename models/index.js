@@ -24,6 +24,8 @@ demandeMUS.belongsTo(userMUS, { foreignKey: "id_userMUS", as: "userMUS" });
 demandeMUS.hasMany(subDemandeMUS, {foreignKey: "id_demandeMUS", as: "subDemandeMUS"});
 subDemandeMUS.belongsTo(demandeMUS, {foreignKey: "id_demandeMUS", as: "demandeMUS"});
 
+demandeMUS.belongsTo(site, { foreignKey: "id_site", as: "site" });
+demandeMUS.belongsTo(projet, { foreignKey: "id_projet" , as:"projet" });
 
 pattern.hasMany(subDemandeMUS, {foreignKey: "id_pattern", as: "subDemandeMUS"});
 subDemandeMUS.belongsTo(pattern, { foreignKey: "id_pattern", as: "pattern" });

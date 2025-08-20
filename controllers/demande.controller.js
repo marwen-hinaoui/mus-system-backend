@@ -3,6 +3,9 @@ const demandeMUS = require("../models/demandeMUS");
 const subDemandeMUS = require("../models/subDemandeMUS");
 const gamme = require("../models/gamme");
 const pattern = require("../models/pattern");
+const { Op, Sequelize } = require("sequelize");
+const projet = require("../models/projet");
+const site = require("../models/site");
 
 const createDemande = async (req, res) => {
   const {
@@ -70,7 +73,11 @@ const createDemande = async (req, res) => {
 
         if (gammeFromDB) {
           const patternFromDB = await pattern.findOne({
-            where: { patternNumb: sub.patternNumb, id_gamme: gammeFromDB.id },
+            where: {
+              patternNumb: sub.patternNumb,
+              id_gamme: gammeFromDB.id,
+              quantite: { [Op.gte]: sub.quantite },
+            },
           });
 
           if (patternFromDB) {
@@ -127,4 +134,40 @@ const createDemande = async (req, res) => {
     });
   }
 };
-module.exports = { createDemande };
+
+const getDemande = async (req, res) => {
+  try {
+    const demandes = await demandeMUS.findAll({
+      attributes: [
+        "id",
+        "numDemande",
+        "id_userMUS",
+        "statusDemande",
+        "date_creation",
+        [Sequelize.col("projet.nom"), "projetNom"],
+        [Sequelize.col("site.nom"), "siteNom"],
+        [Sequelize.col("planCoupe.sequence"), "Sequence"],
+      ],
+      include: [
+        { model: site, attributes: [], as: "site" },
+        { model: projet, attributes: [], as: "projet" },
+        {
+          model: planCoupe,
+          attributes: [],
+          as: "planCoupe",
+        },
+        { model: subDemandeMUS, as: "subDemandeMUS" }, // Include all subDemandeMUS
+      ],
+    });
+
+    return res.status(200).json({
+      message: "Demandes fetch success",
+      data: demandes,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = { createDemande, getDemande };

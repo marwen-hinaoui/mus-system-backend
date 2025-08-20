@@ -8,5 +8,10 @@ router.post(
   verifyTokenAndRole(["Admin", "DEMANDEUR"]),
   demandeController.createDemande
 );
+router.get(
+  "/all",
+  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS"]),
+  demandeController.getDemande
+);
 
 module.exports = router;

@@ -12,6 +12,7 @@ app.use(
     credentials: true,
   })
 );
+
 const cookieParser = require("cookie-parser");
 app.use(cookieParser());
 
@@ -19,16 +20,15 @@ app.use("/api/auth", require("./routes/auth.routes"));
 app.use("/api/demande", require("./routes/demande.route"));
 app.use("/api/trim", require("./routes/trim.routes"));
 
-
 const PORT = 3000;
-const HOST = "0.0.0.0"; /////////////////////////////////////////////////////////
+const HOST = "127.0.0.1"; /////////////////////////////////////////////////////////
 app.listen(PORT, async () => {
   try {
     await sequelize.authenticate();
     // console.log("ACCESS TOKEN KEY:", process.env.JWT_SECRET_KEY);
 
     console.log(
-      "Connected to DB and server running on http://"+ HOST +':'+ PORT
+      "Connected to DB and server running on http://" + HOST + ":" + PORT
     );
   } catch (err) {
     console.error("Unable to connect to the database:", err);

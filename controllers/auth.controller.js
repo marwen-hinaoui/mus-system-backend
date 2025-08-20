@@ -54,14 +54,12 @@ const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // Set refresh token on coockies http-only
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "Lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    // End refresh token
 
     return res.status(200).json({
       id: user.id,
@@ -126,12 +124,12 @@ const refreshAccessToken = (req, res) => {
       const user = await userMUS.findByPk(decoded.id);
       const _roleMUS = await roleMUS.findByPk(user.id_roleMUS);
       if (!user) return res.status(404).json({ message: "User not found" });
-      console.log(decoded);
+      console.log("decoded", decoded);
 
       const newAccessToken = jwt.sign(
         {
           id: user.id,
-          roleMUS: _roleMUS,
+          roleMUS: _roleMUS.name,
           firstName: user.firstName,
           lastName: user.lastName,
           redirection: decoded.redirection,
@@ -160,8 +158,8 @@ const logout = (req, res) => {
 
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: true,
-      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
     });
   }
   return res.status(200).json({ message: "Déconnecté, token blacklisté" });
