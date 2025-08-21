@@ -13,5 +13,10 @@ router.get(
   verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS"]),
   demandeController.getDemande
 );
+router.get(
+  "/details/:id",
+  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS"]),
+  demandeController.getDemandeById
+);
 
 module.exports = router;

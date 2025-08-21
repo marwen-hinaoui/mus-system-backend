@@ -176,5 +176,53 @@ const getDemande = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+const getDemandeById = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-module.exports = { createDemande, getDemande };
+    const demande = await demandeMUS.findOne({
+      where: { id },
+      attributes: [
+        "id",
+        "numDemande",
+        "id_userMUS",
+        "statusDemande",
+        "date_creation",
+        [Sequelize.col("projet.nom"), "projetNom"],
+        [Sequelize.col("site.nom"), "siteNom"],
+        [
+          Sequelize.literal(`CASE
+            WHEN demandeMUS.statusDemande = 'Hors stock' 
+            THEN demandeMUS.sequenceHorsStock
+            ELSE planCoupe.sequence
+          END`),
+          "Sequence",
+        ],
+      ],
+      include: [
+        { model: site, attributes: [], as: "site" },
+        { model: projet, attributes: [], as: "projet" },
+        {
+          model: planCoupe,
+          attributes: [],
+          as: "planCoupe",
+        },
+        { model: subDemandeMUS, as: "subDemandeMUS" },
+      ],
+    });
+
+    if (!demande) {
+      return res.status(404).json({ message: "Demande not found" });
+    }
+
+    return res.status(200).json({
+      message: "Demande fetch success",
+      data: demande,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = { createDemande, getDemande, getDemandeById };
