@@ -101,7 +101,7 @@ const comfirmDemande = async (req, res) => {
   try {
     if (decision !== "accept") {
       return res.status(200).json({
-        message: "Demande refusée",
+        message: "Demande refusé",
       });
     }
 
@@ -110,33 +110,12 @@ const comfirmDemande = async (req, res) => {
       statusDemande: "Demande initié",
     });
 
-    // decrement stock immediately
-    for (const sub of subDemandes) {
-      const gammeFromDB = await gamme.findOne({
-        where: { partNumber: sub.partNumber },
-      });
-      const materialFromDB = await material.findOne({
-        where: { partNumberMaterial: sub.materialPartNumber },
-      });
-
-      if (!gammeFromDB || !materialFromDB) continue;
-
-      const patternFromDB = await pattern.findOne({
-        where: {
-          id_gamme: gammeFromDB.id,
-          patternNumb: sub.patternNumb,
-          id_material: materialFromDB.id,
-        },
-      });
-
-      if (patternFromDB) {
-        let delivered = Math.min(sub.quantite, patternFromDB.quantite);
-
-        patternFromDB.quantite -= delivered;
-        if (patternFromDB.quantite < 0) patternFromDB.quantite = 0;
-        await patternFromDB.save();
-      }
-    }
+    const hasStockLimite = subDemandes.some(
+      (sub) => sub.statusSubDemande === "Stock limité"
+    );
+    console.log("====================================");
+    console.log(hasStockLimite);
+    console.log("====================================");
 
     const createdSubs = await subDemandeMUS.bulkCreate(
       subDemandes.map((sub, idx) => ({
@@ -146,7 +125,6 @@ const comfirmDemande = async (req, res) => {
       })),
       { returning: true }
     );
-
     const demandeDetailsAfterAcceptation = subDemandes.filter(
       (sub) =>
         sub.statusSubDemande === "Stock limité" ||
@@ -154,20 +132,19 @@ const comfirmDemande = async (req, res) => {
     );
 
     return res.status(201).json({
-      message:
-        "Demande initiée avec succès avec numéro: " + newDemande.numDemande,
+      message: "Demande initiée avec succès",
       data: {
         demande: newDemande,
         subDemandes: createdSubs,
-        demandeDetailsAfterAcceptation,
+        hasStockLimite: hasStockLimite,
+        demandeDetailsAfterAcceptation: demandeDetailsAfterAcceptation,
       },
     });
   } catch (error) {
     console.error(error);
-    return res.status(500).json({
-      message: "Erreur confirmation",
-      error: error.message,
-    });
+    return res
+      .status(500)
+      .json({ message: "Erreur confirmation", error: error.message });
   }
 };
 
@@ -258,8 +235,7 @@ const getDemandeById = async (req, res) => {
   }
 };
 
-const acceptDemandeAgent = async (req, res) => {
-  const { id } = req.params;
+const acceptDemandeAgent = async (id) => {
   try {
     const demande = await demandeMUS.findOne({
       where: { id },
@@ -271,8 +247,15 @@ const acceptDemandeAgent = async (req, res) => {
     }
 
     let newStatus = demande.statusDemande;
-
     if (demande.statusDemande === "Demande initié") {
+      newStatus = "En cours de préparation";
+      await demandeMUS.update({ statusDemande: newStatus }, { where: { id } });
+      return res.status(200).json({
+        message: newStatus,
+        data: { id, newStatus },
+      });
+    }
+    if (demande.statusDemande === "En cours de préparation") {
       // check subDemandes
       const hasProblemSub = demande.subDemandeMUS.some(
         (sub) =>
@@ -352,56 +335,21 @@ const annulerDemandeDemandeur = async (req, res) => {
     const demande = await demandeMUS.findOne({
       where: { id },
     });
-    const subDemandeFromDB = await subDemandeMUS.findAll({
-      where: { id_demandeMUS: demande.id },
-    });
 
     if (!demande) {
       return res.status(404).json({ message: "Demande not found" });
     }
 
     if (demande.statusDemande === "Demande initié") {
-      for (const sub of subDemandeFromDB) {
-        if (
-          sub.statusSubDemande === "En stock" ||
-          sub.statusSubDemande === "Stock limité"
-        ) {
-          const gammeFromDB = await gamme.findOne({
-            where: { partNumber: sub.partNumber },
-          });
-          const materialFromDB = await material.findOne({
-            where: {
-              partNumberMaterial: sub.materialPartNumber,
-            },
-          });
-          const patternFromDB = await pattern.findOne({
-            where: {
-              id_gamme: gammeFromDB?.id,
-              patternNumb: sub.patternNumb,
-              id_material: materialFromDB?.id,
-            },
-          });
-          if (!patternFromDB) continue;
-          let delivered = Math.min(sub.quantiteDisponible, sub?.quantite);
-          console.log("====================================");
-          console.log(sub.quantiteDisponible);
-          console.log(sub?.quantite);
-          console.log(delivered);
-
-          console.log("====================================");
-          patternFromDB.quantite += delivered;
-          await patternFromDB.save();
-
-          await demandeMUS.update(
-            { statusDemande: "Demande annulé" },
-            { where: { id } }
-          );
-        }
-      }
-      return res.status(200).json({
-        message: "Demande annulé",
-      });
+      await demandeMUS.update(
+        { statusDemande: "Demande annulé" },
+        { where: { id } }
+      );
     }
+
+    return res.status(200).json({
+      message: "Demande annulé",
+    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({

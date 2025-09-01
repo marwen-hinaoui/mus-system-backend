@@ -19,4 +19,25 @@ router.get(
   demandeController.getDemandeById
 );
 
+router.post(
+  "/comfirm",
+  verifyTokenAndRole(["Admin", "DEMANDEUR"]),
+  demandeController.comfirmDemande
+);
+router.post(
+  "/status/change/:id",
+  verifyTokenAndRole(["Admin", "AGENT_MUS"]),
+  demandeController.acceptDemandeAgent
+);
+router.post(
+  "/status/annuler/:id",
+  verifyTokenAndRole(["Admin", "DEMANDEUR"]),
+  demandeController.annulerDemandeDemandeur
+);
+router.post(
+  "/sub/update/:id",
+  verifyTokenAndRole(["Admin", "DEMANDEUR"]),
+  demandeController.updateSubDemande
+);
+
 module.exports = router;

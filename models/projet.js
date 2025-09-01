@@ -15,7 +15,7 @@ const projet = sequelize.define(
   },
   {
     tableName: "projet",
-    timestamps: false, // disable createdAt & updatedAt columns
+    timestamps: false, 
   }
 );
 

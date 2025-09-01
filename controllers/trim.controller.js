@@ -2,15 +2,6 @@ const site = require("../models/site");
 const projet = require("../models/projet");
 const lieuDetection = require("../models/lieuDetection");
 
-const getProjects = async (req, res) => {
-  try {
-    const projects = await projet.findAll();
-    res.status(200).json({ data: projects });
-  } catch (error) {
-    console.error("Error fetching projects:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-};
 
 const getSites = async (req, res) => {
   try {
@@ -32,4 +23,4 @@ const getLieuDetection = async (req, res) => {
   }
 };
 
-module.exports = { getProjects, getSites, getLieuDetection };
+module.exports = { getSites, getLieuDetection };

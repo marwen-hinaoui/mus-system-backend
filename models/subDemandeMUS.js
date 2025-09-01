@@ -16,25 +16,30 @@ const subDemandeMUS = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    id_gamme: {
-      type: DataTypes.INTEGER,
+
+    partNumber: {
+      type: DataTypes.STRING(17),
     },
-    id_pattern: {
-      type: DataTypes.INTEGER,
+    patternNumb: { type: DataTypes.INTEGER },
+    materialPartNumber: {
+      type: DataTypes.STRING(15),
     },
     code_defaut: {
       type: DataTypes.STRING(6),
       allowNull: true,
     },
     typeDefaut: {
-      type: DataTypes.STRING(35),
-      allowNull: true,
+      type: DataTypes.STRING(55),
     },
-    disponible: {
+    statusSubDemande: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
     },
     quantite: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    quantiteDisponible: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },

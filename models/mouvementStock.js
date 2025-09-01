@@ -1,54 +1,52 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
-const demandeMUS = sequelize.define(
-  "demandeMUS",
+const mouvementStock = sequelize.define(
+  "mouvementStock",
   {
     id: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true,
     },
-    numDemande: {
-      type: DataTypes.VIRTUAL, // Gen in sql
-      get() {
-        return `MUS${this.getDataValue("id")}`;
-      },
-    },
-    id_userMUS: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    id_site: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-    projetNom: {
-      type: DataTypes.STRING(8),
-      allowNull: false,
-    },
-    id_lieuDetection: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
-
-    statusDemande: {
-      type: DataTypes.STRING(55),
-    },
     sequence: {
       type: DataTypes.STRING(12),
+      allowNull: false,
     },
-
+    partNumber: {
+      type: DataTypes.STRING(17),
+      allowNull: false,
+    },
+    patternNumb: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    partNumberMaterial: {
+      type: DataTypes.STRING(15),
+      allowNull: false,
+    },
+    quantite: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    statusMouvement: {
+      type: DataTypes.STRING(25),
+      allowNull: false,
+    },
     date_creation: {
       type: DataTypes.DATEONLY,
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    projetNom: {
+      type: DataTypes.STRING(8),
+      allowNull: false,
+    },
   },
   {
-    tableName: "demandeMUS",
+    tableName: "mouvementStock",
     timestamps: false,
   }
 );
 
-module.exports = demandeMUS;
+module.exports = mouvementStock;

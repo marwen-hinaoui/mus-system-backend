@@ -108,7 +108,7 @@ const signUp = async (req, res) => {
   }
 };
 
-const refreshAccessToken = (req, res) => {
+const refreshAccessToken = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
 
   if (!refreshToken)
@@ -124,7 +124,6 @@ const refreshAccessToken = (req, res) => {
       const user = await userMUS.findByPk(decoded.id);
       const _roleMUS = await roleMUS.findByPk(user.id_roleMUS);
       if (!user) return res.status(404).json({ message: "User not found" });
-      console.log("decoded", decoded);
 
       const newAccessToken = jwt.sign(
         {
@@ -165,4 +164,19 @@ const logout = (req, res) => {
   return res.status(200).json({ message: "Déconnecté, token blacklisté" });
 };
 
-module.exports = { logout, signUp, login, refreshAccessToken };
+const getUsers = async (req, res) => {
+  try {
+    const getUsersFromDB = await userMUS.findAll();
+    console.log(getUsersFromDB);
+
+    return res.status(200).json({
+      data: getUsersFromDB,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({ message: "Erreur get users." });
+  }
+};
+
+module.exports = { logout, signUp, login, refreshAccessToken, getUsers };
