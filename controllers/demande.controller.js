@@ -311,7 +311,7 @@ const acceptDemandeAgent = async (req, res) => {
           patternFromDB.quantite -= sub.quantite;
           if (patternFromDB.quantite < 0) patternFromDB.quantite = 0;
           await patternFromDB.save();
-          if (sub.statusSubDemande !== "Hors stock") {
+          if (sub.statusSubDemande !== "Hors stock" && delivered > 0) {
             await mouvementCreation(
               demande.sequence,
               sub.partNumber,

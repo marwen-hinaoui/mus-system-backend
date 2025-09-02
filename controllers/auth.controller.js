@@ -28,10 +28,10 @@ const login = async (req, res) => {
       case "Admin":
         redirect = "/admin";
         break;
-      case "ROLE_DEMANDEUR":
+      case "DEMANDEUR":
         redirect = "/demandeur/cree_demande";
         break;
-      case "ROLE_AGENT_MUS":
+      case "AGENT_MUS":
         redirect = "/agent";
         break;
 

@@ -31,7 +31,8 @@ app.use("/api/trim", require("./routes/trim.routes"));
 app.use("/api/stock", require("./routes/stock.routes"));
 
 const PORT = 3000;
-const HOST = "127.0.0.1"; /////////////////////////////////////////////////////////
+// const HOST = "127.0.0.1"; /////////////////////////////////////////////////////////
+const HOST = "10.70.26.254"; /////////////////////////////////////////////////////////
 app.listen(PORT, HOST, async () => {
   try {
     await sequelize.authenticate();
