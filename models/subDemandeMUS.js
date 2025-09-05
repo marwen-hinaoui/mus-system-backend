@@ -25,7 +25,7 @@ const subDemandeMUS = sequelize.define(
       type: DataTypes.STRING(15),
     },
     code_defaut: {
-      type: DataTypes.STRING(6),
+      type: DataTypes.STRING(10),
       allowNull: true,
     },
     typeDefaut: {

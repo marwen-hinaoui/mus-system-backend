@@ -98,7 +98,7 @@ const ajoutStockAdmin = async (req, res) => {
         partNumber: partNumber,
       },
     });
-
+    if(sequence ==="x")
     if (!gammeFromDB) {
       gammeFromDB = await gamme.create({
         sequence,
@@ -157,6 +157,7 @@ const ajoutStockAdmin = async (req, res) => {
       .json({ message: "Erreur interne du serveur", error: error.message });
   }
 };
+
 
 const getAllStock = async (req, res) => {
   try {

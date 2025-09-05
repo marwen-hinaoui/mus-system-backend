@@ -19,7 +19,7 @@ const verifyTokenAndRole = (allowedRoles = []) => {
           .json({ message: "Accès refusé: rôle non autorisé" });
       }
 
-      //   req.user = decoded;
+      req.user = decoded;
       next();
     } catch (err) {
       console.log("token", token);

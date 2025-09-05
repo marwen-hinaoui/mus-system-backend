@@ -1,7 +1,5 @@
 const site = require("../models/site");
-const projet = require("../models/projet");
 const lieuDetection = require("../models/lieuDetection");
-
 
 const getSites = async (req, res) => {
   try {
