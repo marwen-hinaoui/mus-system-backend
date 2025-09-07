@@ -9,6 +9,7 @@ const { mouvementCreation } = require("../services/mouvementStockService");
 const { redis } = require("../redisClient");
 const material = require("../models/material");
 const lieuDetection = require("../models/lieuDetection");
+const getUserRoles = require("../middleware/getUserRoles");
 
 const createDemande = async (req, res) => {
   const { sequence, demandeData, subDemandes = [] } = req.body;
@@ -186,19 +187,15 @@ const getDemande = async (req, res) => {
       attributes: [
         "id",
         "numDemande",
-        "id_userMUS",
         "statusDemande",
         "date_creation",
         "projetNom",
-        [Sequelize.col("userMUS.firstName"), "firstName"],
-        [Sequelize.col("userMUS.lastName"), "lastName"],
+        "heure",
+        "demandeur",
         [Sequelize.col("site.nom"), "siteNom"],
         "sequence",
       ],
-      include: [
-        { model: site, attributes: [], as: "site" },
-        { model: userMUS, attributes: [], as: "userMUS" },
-      ],
+      include: [{ model: site, attributes: [], as: "site" }],
       order: [["id", "DESC"]],
     });
 
@@ -221,19 +218,17 @@ const getDemandeById = async (req, res) => {
       attributes: [
         "id",
         "numDemande",
-        "id_userMUS",
         "statusDemande",
         "date_creation",
+        "demandeur",
+        "heure",
         "projetNom",
         [Sequelize.col("site.nom"), "siteNom"],
-        [Sequelize.col("userMUS.firstName"), "firstName"],
-        [Sequelize.col("userMUS.lastName"), "lastName"],
         [Sequelize.col("lieuDetection.nom"), "nomDetection"],
         "sequence",
       ],
       include: [
         { model: site, attributes: [], as: "site" },
-        { model: userMUS, attributes: [], as: "userMUS" },
         { model: lieuDetection, attributes: [], as: "lieuDetection" },
         {
           model: subDemandeMUS,
@@ -282,7 +277,7 @@ const acceptDemandeAgent = async (req, res) => {
     }
 
     let newStatus = demande.statusDemande;
-    if(demande.statusDemande === "Demande initié"){
+    if (demande.statusDemande === "Demande initié") {
       newStatus = "Préparation en cours";
     }
     if (demande.statusDemande === "Préparation en cours") {
@@ -361,10 +356,15 @@ const acceptDemandeAgent = async (req, res) => {
 
 const annulerDemandeDemandeur = async (req, res) => {
   const { id } = req.params;
-  const currentUserId = req.user.id_userMUS;
-  const currentUserRole = req.user.roleMUS;
-  const whereClause =
-    currentUserRole === "Admin" ? { id } : { id, id_userMUS: currentUserId };
+  const currentUserId = req.user.id;
+  console.log("=============== req.user=====================");
+  console.log(req.user);
+  console.log("====================================");
+  const roleList = await getUserRoles(currentUserId);
+
+  const isAdmin = roleList.includes("Admin");
+
+  const whereClause = isAdmin ? { id } : { id, id_userMUS: currentUserId };
   try {
     const demande = await demandeMUS.findOne({ where: whereClause });
     const subDemandeFromDB = await subDemandeMUS.findAll({

@@ -8,10 +8,10 @@ const pattern = require("./pattern");
 const material = require("./material");
 const gamme = require("./gamme");
 const lieuDetection = require("./lieuDetection");
-// const chaine = require("./chaine");
+const fonction = require("./fonction");
+const user_role_MUS = require("./user_role_MUS");
 
-userMUS.belongsTo(roleMUS, { foreignKey: "id_roleMUS", as: "roleMUS" });
-roleMUS.hasMany(userMUS, { foreignKey: "id_roleMUS", as: "userMUS" });
+userMUS.belongsTo(fonction, { foreignKey: "id_fonction", as: "fonction" });
 
 userMUS.belongsTo(site, { foreignKey: "id_site", as: "site" });
 site.hasMany(userMUS, { foreignKey: "id_site", as: "userMUS" });
@@ -42,6 +42,20 @@ lieuDetection.hasMany(demandeMUS, {
 demandeMUS.belongsTo(lieuDetection, {
   foreignKey: "id_lieuDetection",
   as: "lieuDetection",
+});
+
+userMUS.belongsToMany(roleMUS, {
+  through: user_role_MUS,
+  foreignKey: "userId",
+  otherKey: "roleId",
+  as: "roles",
+});
+
+roleMUS.belongsToMany(userMUS, {
+  through: user_role_MUS,
+  foreignKey: "roleId",
+  as: "users",
+  otherKey: "userId",
 });
 
 module.exports = { sequelize, userMUS, roleMUS };

@@ -1,4 +1,3 @@
-const planCoupe = require("../models/planCoupe");
 const gamme = require("../models/gamme");
 const pattern = require("../models/pattern");
 const material = require("../models/material");

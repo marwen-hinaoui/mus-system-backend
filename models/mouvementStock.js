@@ -42,6 +42,11 @@ const mouvementStock = sequelize.define(
       type: DataTypes.STRING(8),
       allowNull: false,
     },
+    heure: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: () => new Date().toTimeString().split(" ")[0],
+    },
   },
   {
     tableName: "mouvementStock",

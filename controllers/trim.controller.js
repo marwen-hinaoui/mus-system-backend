@@ -1,5 +1,6 @@
 const site = require("../models/site");
 const lieuDetection = require("../models/lieuDetection");
+const fonction = require("../models/fonction");
 
 const getSites = async (req, res) => {
   try {
@@ -21,4 +22,14 @@ const getLieuDetection = async (req, res) => {
   }
 };
 
-module.exports = { getSites, getLieuDetection };
+const getFonction = async (req, res) => {
+  try {
+    const fontionsFromDB = await fonction.findAll();
+    res.status(200).json({ data: fontionsFromDB });
+  } catch (error) {
+    console.error("Error fetching lieux:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = { getSites, getLieuDetection, getFonction };

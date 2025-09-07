@@ -12,8 +12,19 @@ const verifyTokenAndRole = (allowedRoles = []) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-      console.log("decoded.role", decoded.roleMUS);
-      if (!allowedRoles.includes(decoded.roleMUS)) {
+      console.log("decoded.roleList", decoded.roleList);
+
+      if (!decoded.roleList || !Array.isArray(decoded.roleList)) {
+        return res
+          .status(403)
+          .json({ message: "Aucun rôle trouvé dans le token" });
+      }
+
+      const hasAccess = decoded.roleList.some((role) =>
+        allowedRoles.includes(role)
+      );
+
+      if (!hasAccess) {
         return res
           .status(403)
           .json({ message: "Accès refusé: rôle non autorisé" });
@@ -23,7 +34,6 @@ const verifyTokenAndRole = (allowedRoles = []) => {
       next();
     } catch (err) {
       console.log("token", token);
-
       return res.status(403).json({ message: "Token invalide ou expiré" });
     }
   };

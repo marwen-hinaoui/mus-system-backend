@@ -1,16 +1,16 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
-const planCoupe = sequelize.define(
-  "planCoupe",
+const fonction = sequelize.define(
+  "fonction",
   {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    sequence: { type: DataTypes.STRING(12), allowNull: false, unique: true },
+    nom: { type: DataTypes.STRING(30), allowNull: false },
   },
   {
-    tableName: "planCoupe",
+    tableName: "fonction",
     timestamps: false,
   }
 );
 
-module.exports = planCoupe;
+module.exports = fonction;
