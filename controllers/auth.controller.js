@@ -216,4 +216,62 @@ const getUsers = async (req, res) => {
   }
 };
 
-module.exports = { logout, signUp, login, refreshAccessToken, getUsers };
+const updatePassword = async (req, res) => {
+  try {
+    const { userId, newPassword } = req.body;
+
+    if (!userId || !newPassword) {
+      return res.status(400).json({ message: "Missing userId or password" });
+    }
+
+    const user = await userMUS.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
+    }
+
+    const salt = bcrypt.genSaltSync(10);
+    const hashedPassword = bcrypt.hashSync(newPassword, salt);
+
+    user.password = hashedPassword;
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ message: "Mot de passe mis à jour avec succès" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await userMUS.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
+    }
+
+    await user.destroy();
+
+    return res
+      .status(200)
+      .json({ message: "Utilisateur supprimé avec succès" });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Erreur serveur lors de la suppression" });
+  }
+};
+
+module.exports = {
+  logout,
+  signUp,
+  login,
+  refreshAccessToken,
+  getUsers,
+  updatePassword,
+  deleteUser,
+};
