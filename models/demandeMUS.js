@@ -15,15 +15,25 @@ const demandeMUS = sequelize.define(
         return `MUS${this.getDataValue("id")}`;
       },
     },
-    id_userMUS: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-    },
+
     id_site: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    id_projet: {
+    heure: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: () => new Date().toTimeString().split(" ")[0],
+    },
+    projetNom: {
+      type: DataTypes.STRING(8),
+      allowNull: false,
+    },
+    demandeur: {
+      type: DataTypes.STRING(33),
+      allowNull: false,
+    },
+    id_userMUS: {
       type: DataTypes.INTEGER,
       allowNull: false,
     },
@@ -31,10 +41,11 @@ const demandeMUS = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false,
     },
-    id_planCoupe: {
-      type: DataTypes.INTEGER,
-    },
+
     statusDemande: {
+      type: DataTypes.STRING(55),
+    },
+    sequence: {
       type: DataTypes.STRING(12),
     },
 

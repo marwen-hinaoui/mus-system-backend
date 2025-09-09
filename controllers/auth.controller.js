@@ -2,19 +2,21 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { userMUS, roleMUS } = require("../models");
 const generateToken = require("../middleware/generateToken");
+const getUserRoles = require("../middleware/getUserRoles");
+const user_role_MUS = require("../models/user_role_MUS");
+const site = require("../models/site");
+const fonction = require("../models/fonction");
+const { Sequelize } = require("sequelize");
 const blacklistedRefreshTokens = new Set();
 require("dotenv").config();
 
 const login = async (req, res) => {
-  var redirect;
   try {
     const { username, password } = req.body;
 
     const user = await userMUS.findOne({
       where: { username },
-      include: { model: roleMUS, as: "roleMUS" },
     });
-
     if (!user) {
       return res.status(404).json({ message: "Utilisateur non trouvé." });
     }
@@ -24,28 +26,24 @@ const login = async (req, res) => {
       return res.status(401).json({ message: "Mot de passe incorrect." });
     }
 
-    switch (user.roleMUS.name) {
-      case "Admin":
-        redirect = "/admin";
-        break;
-      case "ROLE_DEMANDEUR":
-        redirect = "/demandeur/cree_demande";
-        break;
-      case "ROLE_AGENT_MUS":
-        redirect = "/agent";
-        break;
+    const roleList = await getUserRoles(user.id);
 
-      default:
-        break;
+    let redirect = "/";
+    if (roleList.includes("Admin")) {
+      redirect = "/admin";
+    } else if (
+      roleList.includes("DEMANDEUR") ||
+      roleList.includes("AGENT_MUS")
+    ) {
+      redirect = "/user";
     }
 
-    const token = generateToken(user, user.roleMUS.name);
-
+    const token = generateToken(user, roleList);
     // Generate refresh token
     const refreshToken = jwt.sign(
       {
         id: user.id,
-        roleMUS: user.roleMUS.name,
+        roleList,
         firstName: user.firstName,
         lastName: user.lastName,
         redirection: redirect,
@@ -54,21 +52,19 @@ const login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // Set refresh token on coockies http-only
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      secure: "production", //changes if problem url secure
+      sameSite: "Lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
-    // End refresh token
 
     return res.status(200).json({
       id: user.id,
       username: user.username,
-      roleMUS: user.roleMUS.name,
+      roleList,
       accessToken: token,
-      redirect: redirect,
+      redirect,
       firstName: user.firstName,
       lastName: user.lastName,
     });
@@ -90,18 +86,30 @@ const signUp = async (req, res) => {
       lastName: req.body.lastName,
       email: req.body.email,
       matricule: req.body.matricule,
-      id_roleMUS: req.body.id_roleMUS,
       id_site: req.body.id_site,
       username: req.body.username,
+      id_fonction: req.body.id_fonction,
       password: hashedPassword,
     };
 
     const user_create = await userMUS.create(user);
+    for (const r of req.body.roles) {
+      const findRoleMUS = await roleMUS.findOne({
+        where: {
+          name: r,
+        },
+      });
+
+      await user_role_MUS.create({
+        userId: user_create.id,
+        roleId: findRoleMUS.id,
+      });
+    }
 
     return res.status(201).json({
       id: user_create.id,
       username: user_create.username,
-      roleMUS: user_create.id_roleMUS,
+
       site: user_create.id_site,
     });
   } catch (error) {
@@ -110,7 +118,7 @@ const signUp = async (req, res) => {
   }
 };
 
-const refreshAccessToken = (req, res) => {
+const refreshAccessToken = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
 
   if (!refreshToken)
@@ -124,14 +132,13 @@ const refreshAccessToken = (req, res) => {
         return res.status(403).json({ message: "Invalid refresh token" });
 
       const user = await userMUS.findByPk(decoded.id);
-      const _roleMUS = await roleMUS.findByPk(user.id_roleMUS);
-      if (!user) return res.status(404).json({ message: "User not found" });
-      console.log(decoded);
 
+      if (!user) return res.status(404).json({ message: "User not found" });
+      const roleList = await getUserRoles(user.id);
       const newAccessToken = jwt.sign(
         {
           id: user.id,
-          roleMUS: _roleMUS,
+          roleList,
           firstName: user.firstName,
           lastName: user.lastName,
           redirection: decoded.redirection,
@@ -143,7 +150,7 @@ const refreshAccessToken = (req, res) => {
       res.status(200).json({
         id: user.id,
         accessToken: newAccessToken,
-        roleMUS: _roleMUS.name,
+        roleList,
         firstName: user.firstName,
         lastName: user.lastName,
         redirection: decoded.redirection,
@@ -160,11 +167,111 @@ const logout = (req, res) => {
 
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: true,
-      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "Lax",
     });
   }
   return res.status(200).json({ message: "Déconnecté, token blacklisté" });
 };
 
-module.exports = { logout, signUp, login, refreshAccessToken };
+const getUsers = async (req, res) => {
+  try {
+    const getUsersFromDB = await userMUS.findAll({
+      attributes: [
+        "id",
+        "lastName",
+        "firstName",
+        "email",
+        "matricule",
+        "username",
+        [Sequelize.col("fonction.nom"), "fonctioNom"],
+        [Sequelize.col("site.nom"), "siteNom"],
+      ],
+      include: [
+        { model: site, attributes: [], as: "site" },
+        { model: fonction, attributes: [], as: "fonction" },
+        {
+          model: roleMUS,
+          as: "roles",
+          through: { attributes: [] },
+          attributes: ["name"],
+        },
+      ],
+      order: [["id", "DESC"]],
+    });
+    const formattedUsers = getUsersFromDB.map((user) => {
+      const roles = user.roles.map((role) => role.name);
+      return {
+        ...user.toJSON(),
+        roleList: roles,
+      };
+    });
+    return res.status(200).json({
+      data: formattedUsers,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({ message: "Erreur get users." });
+  }
+};
+
+const updatePassword = async (req, res) => {
+  try {
+    const { userId, newPassword } = req.body;
+
+    if (!userId || !newPassword) {
+      return res.status(400).json({ message: "Missing userId or password" });
+    }
+
+    const user = await userMUS.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
+    }
+
+    const salt = bcrypt.genSaltSync(10);
+    const hashedPassword = bcrypt.hashSync(newPassword, salt);
+
+    user.password = hashedPassword;
+    await user.save();
+
+    return res
+      .status(200)
+      .json({ message: "Mot de passe mis à jour avec succès" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erreur serveur" });
+  }
+};
+
+const deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await userMUS.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Utilisateur non trouvé" });
+    }
+
+    await user.destroy();
+
+    return res
+      .status(200)
+      .json({ message: "Utilisateur supprimé avec succès" });
+  } catch (error) {
+    console.error(error);
+    return res
+      .status(500)
+      .json({ message: "Erreur serveur lors de la suppression" });
+  }
+};
+
+module.exports = {
+  logout,
+  signUp,
+  login,
+  refreshAccessToken,
+  getUsers,
+  updatePassword,
+  deleteUser,
+};
