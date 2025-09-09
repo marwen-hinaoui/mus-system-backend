@@ -32,10 +32,8 @@ app.use(cookieParser());
 app.use("/api/auth", require("./routes/auth.routes"));
 app.use("/api/demande", require("./routes/demande.route"));
 app.use("/api/trim", require("./routes/trim.routes"));
-<<<<<<< HEAD
-=======
+
 app.use("/api/stock", require("./routes/stock.routes"));
->>>>>>> f0b04cf8fceaa955e98b9e9d15bfe0848ff6bf0a
 
 require("./services/demandeExpirationService");
 
