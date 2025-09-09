@@ -180,6 +180,9 @@ const comfirmDemande = async (req, res) => {
     });
   }
 };
+<<<<<<< HEAD
+module.exports = { createDemande };
+=======
 
 const getDemande = async (req, res) => {
   try {
@@ -492,3 +495,4 @@ module.exports = {
   annulerDemandeDemandeur,
   updateSubDemande,
 };
+>>>>>>> f0b04cf8fceaa955e98b9e9d15bfe0848ff6bf0a

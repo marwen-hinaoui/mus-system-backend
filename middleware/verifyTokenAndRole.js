@@ -12,6 +12,10 @@ const verifyTokenAndRole = (allowedRoles = []) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+<<<<<<< HEAD
+      console.log('decoded.role', decoded.roleMUS)
+      if (!allowedRoles.includes(decoded.roleMUS.name)) {
+=======
       console.log("decoded.roleList", decoded.roleList);
 
       if (!decoded.roleList || !Array.isArray(decoded.roleList)) {
@@ -25,6 +29,7 @@ const verifyTokenAndRole = (allowedRoles = []) => {
       );
 
       if (!hasAccess) {
+>>>>>>> f0b04cf8fceaa955e98b9e9d15bfe0848ff6bf0a
         return res
           .status(403)
           .json({ message: "Accès refusé: rôle non autorisé" });
