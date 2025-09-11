@@ -5,9 +5,14 @@ const {
   getLieuDetection,
   getFonction,
 } = require("../controllers/trim.controller");
+const verifyTokenAndRole = require("../middleware/verifyTokenAndRole");
 
 router.get("/sites", getSites);
 router.get("/lieu-detection", getLieuDetection);
-router.get("/fonction", getFonction);
+router.get(
+  "/fonction",
+  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS"]),
+  getFonction
+);
 
 module.exports = router;

@@ -10,19 +10,19 @@ const mouvementStock = sequelize.define(
       primaryKey: true,
     },
     sequence: {
-      type: DataTypes.STRING(12),
+      type: DataTypes.STRING(20),
       allowNull: false,
     },
     partNumber: {
-      type: DataTypes.STRING(17),
+      type: DataTypes.STRING(19),
       allowNull: false,
     },
     patternNumb: {
-      type: DataTypes.INTEGER,
+      type: DataTypes.STRING(55),
       allowNull: false,
     },
     partNumberMaterial: {
-      type: DataTypes.STRING(15),
+      type: DataTypes.STRING(19),
       allowNull: false,
     },
     quantite: {
@@ -39,7 +39,7 @@ const mouvementStock = sequelize.define(
       defaultValue: DataTypes.NOW,
     },
     projetNom: {
-      type: DataTypes.STRING(8),
+      type: DataTypes.STRING(55),
       allowNull: false,
     },
     heure: {

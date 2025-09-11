@@ -10,6 +10,7 @@ const { redis } = require("../redisClient");
 const material = require("../models/material");
 const lieuDetection = require("../models/lieuDetection");
 const getUserRoles = require("../middleware/getUserRoles");
+const { mailOptions, transporter } = require("../middleware/init_smtp");
 
 const createDemande = async (req, res) => {
   const { sequence, demandeData, subDemandes = [] } = req.body;
@@ -163,9 +164,15 @@ const comfirmDemande = async (req, res) => {
         sub.statusSubDemande === "En stock"
     );
 
+    // const statusMail = await transporter.sendMail(mailOptions);
+    // console.log(
+    //   "  ----------------------------------------- statusMail -------------------------------------------- "
+    // );
+    // console.log(statusMail);
+
     return res.status(201).json({
-      message:
-        "Demande initiée avec succès avec numéro: " + newDemande.numDemande,
+      message: "Demande initiée avec succès avec numéro: ",
+
       data: {
         demande: newDemande,
         subDemandes: createdSubs,
@@ -303,11 +310,12 @@ const acceptDemandeAgent = async (req, res) => {
             partNumberMaterial: sub.materialPartNumber,
           },
         });
+
         const patternFromDB = await pattern.findOne({
           where: {
             id_gamme: gammeFromDB.id,
             patternNumb: sub.patternNumb,
-            id_material: materialFromDB.id,
+            id_material: materialFromDB?.id,
           },
         });
         if (!gammeFromDB) {

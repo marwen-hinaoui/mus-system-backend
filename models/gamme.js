@@ -5,9 +5,9 @@ const gamme = sequelize.define(
   "gamme",
   {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    partNumber: { type: DataTypes.STRING(17), allowNull: false, unique: true },
-    sequence: { type: DataTypes.STRING(12) },
-    projetNom: { type: DataTypes.STRING(8) },
+    partNumber: { type: DataTypes.STRING(55), allowNull: false, unique: true },
+    sequence: { type: DataTypes.STRING(55) },
+    projetNom: { type: DataTypes.STRING(55) },
   },
   {
     tableName: "gamme",

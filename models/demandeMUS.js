@@ -26,7 +26,7 @@ const demandeMUS = sequelize.define(
       defaultValue: () => new Date().toTimeString().split(" ")[0],
     },
     projetNom: {
-      type: DataTypes.STRING(8),
+      type: DataTypes.STRING(55),
       allowNull: false,
     },
     demandeur: {
@@ -35,7 +35,7 @@ const demandeMUS = sequelize.define(
     },
     id_userMUS: {
       type: DataTypes.INTEGER,
-      allowNull: false,
+      allowNull: true,
     },
     id_lieuDetection: {
       type: DataTypes.INTEGER,
@@ -46,7 +46,8 @@ const demandeMUS = sequelize.define(
       type: DataTypes.STRING(55),
     },
     sequence: {
-      type: DataTypes.STRING(12),
+      type: DataTypes.STRING(55),
+      allowNull: false,
     },
 
     date_creation: {

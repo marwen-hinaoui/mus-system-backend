@@ -16,7 +16,11 @@ userMUS.belongsTo(fonction, { foreignKey: "id_fonction", as: "fonction" });
 userMUS.belongsTo(site, { foreignKey: "id_site", as: "site" });
 site.hasMany(userMUS, { foreignKey: "id_site", as: "userMUS" });
 
-demandeMUS.belongsTo(userMUS, { foreignKey: "id_userMUS", as: "userMUS" });
+demandeMUS.belongsTo(userMUS, {
+  foreignKey: "id_userMUS",
+  as: "userMUS",
+  onDelete: "SET NULL",
+});
 
 demandeMUS.hasMany(subDemandeMUS, {
   foreignKey: "id_demandeMUS",

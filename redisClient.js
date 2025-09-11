@@ -13,7 +13,7 @@ if (useMock) {
 } else {
   const Redis = require("ioredis");
 
-  const REDIS_HOST = process.env.REDIS_HOST || "10.106.52.254";
+  const REDIS_HOST = process.env.REDIS_HOST || "10.50.66.246";
   const REDIS_PORT = process.env.REDIS_PORT
     ? parseInt(process.env.REDIS_PORT)
     : 6379;

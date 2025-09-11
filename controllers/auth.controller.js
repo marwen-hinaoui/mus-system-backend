@@ -7,6 +7,7 @@ const user_role_MUS = require("../models/user_role_MUS");
 const site = require("../models/site");
 const fonction = require("../models/fonction");
 const { Sequelize } = require("sequelize");
+// const { transporter, mailOptions } = require("../middleware/init_smtp");
 const blacklistedRefreshTokens = new Set();
 require("dotenv").config();
 
@@ -25,7 +26,7 @@ const login = async (req, res) => {
     if (!isValid) {
       return res.status(401).json({ message: "Mot de passe incorrect." });
     }
-
+    const userFonction = await fonction.findByPk(user.id_fonction);
     const roleList = await getUserRoles(user.id);
 
     let redirect = "/";
@@ -47,6 +48,7 @@ const login = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         redirection: redirect,
+        fonction: userFonction.nom,
       },
       process.env.JWT_REFRESH_SECRET_KEY,
       { expiresIn: "7d" }
@@ -54,7 +56,7 @@ const login = async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: "production", //changes if problem url secure
+      secure: process.env.NODE_ENV === "production" ? true : false, // only secure for  https
       sameSite: "Lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -67,6 +69,7 @@ const login = async (req, res) => {
       redirect,
       firstName: user.firstName,
       lastName: user.lastName,
+      fonction: userFonction.nom,
     });
   } catch (error) {
     console.error("Erreur lors du login:", error);
@@ -142,6 +145,7 @@ const refreshAccessToken = async (req, res) => {
           firstName: user.firstName,
           lastName: user.lastName,
           redirection: decoded.redirection,
+          fonction: decoded.fonction,
         },
         process.env.JWT_SECRET_KEY,
         { expiresIn: 86400 }
@@ -154,6 +158,7 @@ const refreshAccessToken = async (req, res) => {
         firstName: user.firstName,
         lastName: user.lastName,
         redirection: decoded.redirection,
+        fonction: decoded.fonction,
       });
     }
   );
@@ -265,6 +270,36 @@ const deleteUser = async (req, res) => {
       .json({ message: "Erreur serveur lors de la suppression" });
   }
 };
+const nodemailer = require("nodemailer");
+
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: "marwenhinaouii@gmail.com",
+    pass: "fuwz czxt xlok skrk", // App Password متاع Gmail
+  },
+});
+
+const mailOptions = {
+  from: '"MUS" <marwenhinaouii@gmail.com>',
+  to: "hmarwen@lear.com",
+  subject: "Hello from MUS!",
+  html: "<b>This is the HTML body of the email.</b>",
+};
+
+// const sendMail = async (req, res) => {
+//   try {
+//     await transporter.sendMail(mailOptions);
+//     return res.status(200).json({ message: "Email envoyé avec succès" });
+//   } catch (error) {
+//     console.error(error);
+//     return res
+//       .status(500)
+//       .json({ message: "Erreur serveur lors de l’envoi de l’email" });
+//   }
+// };
 
 module.exports = {
   logout,
@@ -274,4 +309,5 @@ module.exports = {
   getUsers,
   updatePassword,
   deleteUser,
+  // sendMail,
 };

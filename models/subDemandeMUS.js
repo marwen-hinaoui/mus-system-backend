@@ -10,7 +10,7 @@ const subDemandeMUS = sequelize.define(
       autoIncrement: true,
     },
     numSubDemande: {
-      type: DataTypes.STRING(13),
+      type: DataTypes.STRING(55),
     },
     id_demandeMUS: {
       type: DataTypes.INTEGER,
@@ -18,18 +18,18 @@ const subDemandeMUS = sequelize.define(
     },
 
     partNumber: {
-      type: DataTypes.STRING(17),
+      type: DataTypes.STRING(19),
     },
-    patternNumb: { type: DataTypes.INTEGER },
+    patternNumb: { type: DataTypes.STRING(55), allowNull: false },
     materialPartNumber: {
-      type: DataTypes.STRING(15),
+      type: DataTypes.STRING(19),
     },
     code_defaut: {
-      type: DataTypes.STRING(10),
+      type: DataTypes.STRING(20),
       allowNull: true,
     },
     typeDefaut: {
-      type: DataTypes.STRING(55),
+      type: DataTypes.STRING(150),
     },
     statusSubDemande: {
       type: DataTypes.BOOLEAN,

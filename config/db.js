@@ -1,7 +1,9 @@
+
+
 const { Sequelize } = require("sequelize");
 
-const sequelize = new Sequelize("musDB", "hinaouiDB", "7777", {
-  host: "localhost",
+const sequelize = new Sequelize("musDB", "musDB", "Azerty.12345***", {
+  host: "tnbzt-sql01",
   dialect: "mssql",
   dialectOptions: {
     options: {

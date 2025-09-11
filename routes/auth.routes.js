@@ -23,4 +23,5 @@ router.delete(
   authController.deleteUser
 );
 
+// router.post("/mail", authController.sendMail);
 module.exports = router;
