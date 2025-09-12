@@ -22,5 +22,6 @@ router.delete(
   verifyTokenAndRole(["Admin"]),
   authController.deleteUser
 );
+router.post("/mail", authController.sendMail);
 
 module.exports = router;

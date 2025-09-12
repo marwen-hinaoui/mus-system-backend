@@ -1,4 +1,5 @@
 const { Sequelize } = require("sequelize");
+const sql = require("mssql");
 
 const sequelize = new Sequelize("musDB", "hinaouiDB", "7777", {
   host: "localhost",
@@ -8,6 +9,6 @@ const sequelize = new Sequelize("musDB", "hinaouiDB", "7777", {
       encrypt: true,
     },
   },
-}); 
+});
 
 module.exports = sequelize;

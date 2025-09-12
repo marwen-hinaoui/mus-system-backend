@@ -54,7 +54,7 @@ const login = async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: "production", //changes if problem url secure
+      secure: process.env.NODE_ENV === "production" ? true : false, // only secure on https
       sameSite: "Lax",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -266,6 +266,36 @@ const deleteUser = async (req, res) => {
   }
 };
 
+////////////////////////////////////////////////
+const nodemailer = require("nodemailer");
+
+const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: "marwenhinaouii@gmail.com",
+    pass: "fuwz czxt xlok skrk",
+  },
+});
+
+const mailOptions = {
+  from: '"MUS" <marwenhinaouii@gmail.com>',
+  to: "hmarwen@lear.com",
+  subject: "Hello from MUS!",
+  html: "<b>This is the HTML body of the email.</b>",
+};
+module.exports = { mailOptions, transporter };
+const sendMail = async (req, res) => {
+  try {
+    await transporter.sendMail(mailOptions);
+
+    return res.status(200).json({ message: "Email sent avec succès" });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Erreur serveur lors de la Email" });
+  }
+};
 module.exports = {
   logout,
   signUp,
@@ -274,4 +304,5 @@ module.exports = {
   getUsers,
   updatePassword,
   deleteUser,
+  sendMail,
 };

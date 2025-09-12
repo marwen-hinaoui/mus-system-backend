@@ -10,6 +10,34 @@ const { redis } = require("../redisClient");
 const material = require("../models/material");
 const lieuDetection = require("../models/lieuDetection");
 const getUserRoles = require("../middleware/getUserRoles");
+const sendEmail = require("../middleware/send_mail");
+const buildTable = (subs) => `
+      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-family:Arial, sans-serif;font-size:14px;">
+        <thead style="background:#f2f2f2;">
+          <tr>
+            <th align="left">Part Number</th>
+            <th align="left">Pattern N°</th>
+            <th align="left">Quantité demandée</th>
+            <th align="left">Quantité disponible</th>
+            <th align="left">Statut</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${subs
+            .map(
+              (s) => `
+            <tr>
+              <td>${s.partNumber || "-"}</td>
+              <td>${s.patternNumb || "-"}</td>
+              <td>${s.quantite || 0}</td>
+              <td>${s.quantiteDisponible ?? "-"}</td>
+              <td>${s.statusSubDemande || "-"}</td>
+            </tr>`
+            )
+            .join("")}
+        </tbody>
+      </table>
+    `;
 
 const createDemande = async (req, res) => {
   const { sequence, demandeData, subDemandes = [] } = req.body;
@@ -61,6 +89,7 @@ const createDemande = async (req, res) => {
         id_pattern: patternId,
       });
     }
+
     if (countDisponible === 0) {
       const newDemande = await demandeMUS.create({
         ...demandeData,
@@ -78,6 +107,17 @@ const createDemande = async (req, res) => {
         { returning: true }
       );
 
+      await sendEmail({
+        to: "devhinaoui@hotmail.com",
+        subject: `Status demande:  ${newDemande.statusDemande} - ${newDemande.numDemande}`,
+        html: `
+      <h3>Status demande: ${newDemande.statusDemande}</h3>
+      <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
+      <p><b>Status:</b> ${newDemande.statusDemande}</p>
+      <h4>Détails:</h4>
+          ${buildTable(createdSubs)}
+    `,
+      });
       return res.status(201).json({
         message:
           "Demande hors stock! Vous pouvez faire une demande PLS avec le numéro: " +
@@ -162,7 +202,17 @@ const comfirmDemande = async (req, res) => {
         sub.statusSubDemande === "Stock limité" ||
         sub.statusSubDemande === "En stock"
     );
-
+    await sendEmail({
+      to: "devhinaoui@hotmail.com",
+      subject: `Status demande: ${newDemande.statusDemande} - ${newDemande.numDemande}`,
+      html: `
+      <h3>Status demande: ${newDemande.statusDemande}</h3>
+      <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
+      <p><b>Status:</b> ${newDemande.statusDemande}</p>
+      <h4>Détails:</h4>
+          ${buildTable(subDemandes)}
+    `,
+    });
     return res.status(201).json({
       message:
         "Demande initiée avec succès avec numéro: " + newDemande.numDemande,
@@ -279,6 +329,17 @@ const acceptDemandeAgent = async (req, res) => {
     let newStatus = demande.statusDemande;
     if (demande.statusDemande === "Demande initié") {
       newStatus = "Préparation en cours";
+      await sendEmail({
+        to: "devhinaoui@hotmail.com",
+        subject: `Status demande : ${newStatus} - ${demande.numDemande}`,
+        html: `
+              <h3>Status demande: ${newStatus}</h3>
+              <p>Numéro de demande: <b>${demande.numDemande}</b></p>
+              <p><b>Status:</b> ${newStatus}</p>
+              <h4>Détails:</h4>
+                  ${buildTable(demande.subDemandeMUS)}
+            `,
+      });
     }
     if (demande.statusDemande === "Préparation en cours") {
       // check subDemandes
@@ -329,6 +390,17 @@ const acceptDemandeAgent = async (req, res) => {
               "Livré",
               demande.projetNom
             );
+            await sendEmail({
+              to: "devhinaoui@hotmail.com",
+              subject: `Status demande : ${demande.statusDemande} - ${demande.numDemande}`,
+              html: `
+              <h3>Status demande: ${demande.statusDemande}</h3>
+              <p>Numéro de demande: <b>${demande.numDemande}</b></p>
+              <p><b>Status:</b> ${demande.statusDemande}</p>
+              <h4>Détails:</h4>
+                  ${buildTable(demande.subDemandeMUS)}
+            `,
+            });
           }
 
           console.log(`Pattern stock mise à jour: ${patternFromDB.quantite}`);
@@ -401,13 +473,23 @@ const annulerDemandeDemandeur = async (req, res) => {
 
           patternFromDB.quantite += delivered;
           await patternFromDB.save();
-
-          await demandeMUS.update(
-            { statusDemande: "Demande annulé" },
-            { where: { id } }
-          );
         }
       }
+      await demandeMUS.update(
+        { statusDemande: "Demande annulé" },
+        { where: { id } }
+      );
+      await sendEmail({
+        to: "devhinaoui@hotmail.com",
+        subject: `Status demande : ${demande.statusDemande} - ${demande.numDemande}`,
+        html: `
+              <h3>Status demande: ${demande.statusDemande}</h3>
+              <p>Numéro de demande: <b>${demande.numDemande}</b></p>
+              <p><b>Status:</b> ${demande.statusDemande}</p>
+              <h4>Détails:</h4>
+                  ${buildTable(demande.subDemandeMUS)}
+            `,
+      });
       return res.status(200).json({
         message: "Demande annulé",
       });
