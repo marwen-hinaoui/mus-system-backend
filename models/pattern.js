@@ -1,4 +1,4 @@
-const { DataTypes } = require("sequelize");
+  const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
 
 const pattern = sequelize.define(
@@ -13,6 +13,13 @@ const pattern = sequelize.define(
   {
     tableName: "pattern",
     timestamps: false,
+    indexes: [
+      {
+        unique: true,
+        fields: ["patternNumb", "id_gamme"],
+        name: "UQ_pattern_gamme",
+      },
+    ],
   }
 );
 

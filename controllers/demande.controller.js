@@ -10,8 +10,16 @@ const { redis } = require("../redisClient");
 const material = require("../models/material");
 const lieuDetection = require("../models/lieuDetection");
 const getUserRoles = require("../middleware/getUserRoles");
-const { mailOptions, transporter } = require("../middleware/init_smtp");
+const { sendEmail, buildTable } = require("../middleware/send_mail");
 
+const getEmail = async (id) => {
+  const current_user = await userMUS.findByPk(id);
+  if (current_user) {
+    return current_user.email;
+  } else {
+    return "Email not found";
+  }
+};
 const createDemande = async (req, res) => {
   const { sequence, demandeData, subDemandes = [] } = req.body;
   let countDisponible = 0;
@@ -78,11 +86,26 @@ const createDemande = async (req, res) => {
         })),
         { returning: true }
       );
+      console.log(
+        "------------------------------------------------- email --------------------------------------------"
+      );
+      const email = await getEmail(newDemande.id_userMUS);
 
+      // await sendEmail({
+      //   to: email,
+      //   subject: `Status demande:  ${newDemande.statusDemande} - ${newDemande.numDemande}`,
+      //   html: `
+      //       <h3>Status demande: ${newDemande.statusDemande}</h3>
+      //       <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
+      //       <p><b>Status:</b> ${newDemande.statusDemande}</p>
+      //       <h4>Détails:</h4>
+      //       ${buildTable(createdSubs)}
+      //        `,
+      // });
       return res.status(201).json({
         message:
-          "Demande hors stock! Vous pouvez faire une demande PLS avec le numéro: " +
-          newDemande.numDemande,
+          "Demande hors stock! Vous pouvez faire une demande PLS avec le numéro",
+        numeroDemande: newDemande.numDemande,
         data: { demande: newDemande, subDemandes: createdSubs },
       });
     }
@@ -163,17 +186,33 @@ const comfirmDemande = async (req, res) => {
         sub.statusSubDemande === "Stock limité" ||
         sub.statusSubDemande === "En stock"
     );
+    const email = await getEmail(newDemande.id_userMUS);
 
-    // const statusMail = await transporter.sendMail(mailOptions);
-    // console.log(
-    //   "  ----------------------------------------- statusMail -------------------------------------------- "
-    // );
-    // console.log(statusMail);
+    // await sendEmail({
+    //   to: email,
+    //   subject: `Status demande: ${newDemande.statusDemande} - ${newDemande.numDemande}`,
+    //   html: `
+    //   <h3>Status demande: ${newDemande.statusDemande}</h3>
+    //   <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
+    //   <p><b>Status:</b> ${newDemande.statusDemande}</p>
+    //   <h4>Détails:</h4>
+    //       ${buildTable(subDemandes)}
+    // `,
+    // });
+    const hasStockLimite = subDemandes.some(
+      (sub) =>
+        sub.statusSubDemande === "Hors stock" ||
+        sub.statusSubDemande === "Stock limité"
+    );
+    console.log("hasProblemSub");
+    console.log(hasStockLimite);
 
     return res.status(201).json({
-      message: "Demande initiée avec succès avec numéro: ",
+      message: "Demande initiée avec succès avec numéro",
+      numeroDemande: newDemande.numDemande,
 
       data: {
+        hasStockLimite: hasStockLimite,
         demande: newDemande,
         subDemandes: createdSubs,
         demandeDetailsAfterAcceptation,
@@ -286,6 +325,19 @@ const acceptDemandeAgent = async (req, res) => {
     let newStatus = demande.statusDemande;
     if (demande.statusDemande === "Demande initié") {
       newStatus = "Préparation en cours";
+      const email = await getEmail(demande.id_userMUS);
+
+      // await sendEmail({
+      //   to: email,
+      //   subject: `Status demande : ${newStatus} - ${demande.numDemande}`,
+      //   html: `
+      //         <h3>Status demande: ${newStatus}</h3>
+      //         <p>Numéro de demande: <b>${demande.numDemande}</b></p>
+      //         <p><b>Status:</b> ${newStatus}</p>
+      //         <h4>Détails:</h4>
+      //             ${buildTable(demande.subDemandeMUS)}
+      //       `,
+      // });
     }
     if (demande.statusDemande === "Préparation en cours") {
       // check subDemandes
@@ -365,9 +417,7 @@ const acceptDemandeAgent = async (req, res) => {
 const annulerDemandeDemandeur = async (req, res) => {
   const { id } = req.params;
   const currentUserId = req.user.id;
-  console.log("=============== req.user=====================");
-  console.log(req.user);
-  console.log("====================================");
+
   const roleList = await getUserRoles(currentUserId);
 
   const isAdmin = roleList.includes("Admin");
@@ -463,9 +513,7 @@ const updateSubDemande = async (req, res) => {
         error: error.message,
       });
     }
-    console.log("====================================");
-    console.log(patternFromDB?.quantite);
-    console.log("====================================");
+
     if (patternFromDB?.quantite > 0) {
       if (quantite <= patternFromDB?.quantite) {
         _statusSubDemande = "En stock";

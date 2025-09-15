@@ -21,8 +21,13 @@ const ajoutStock = async (req, res) => {
         partNumber: partNumber,
       },
     });
+    console.log("---------------------gammeFromDB------------------------");
+    console.log(gammeFromDB);
 
     if (!gammeFromDB) {
+      console.log(
+        "----------------------gammeFromDB NOT EXISTE ///////////////////////////////////////////"
+      );
       gammeFromDB = await gamme.create({
         sequence,
         partNumber,
@@ -36,12 +41,24 @@ const ajoutStock = async (req, res) => {
         id_gamme: gammeFromDB.id,
       },
     });
-
+    console.log(
+      "--------------------- gammeFromDB.id ------------------------"
+    );
+    console.log(gammeFromDB.id);
+    console.log("---------------------patternFromDB------------------------");
+    console.log(patternFromDB);
     if (!patternFromDB) {
+      console.log(
+        "----------------------patternFromDB NOT EXISTE ///////////////////////////////////////////"
+      );
+
       let materialFromDB = await material.findOne({
         where: { partNumberMaterial },
       });
-
+      console.log(
+        "---------------------materialFromDB------------------------"
+      );
+      console.log(materialFromDB);
       if (!materialFromDB) {
         materialFromDB = await material.create({
           partNumberMaterial,
@@ -97,14 +114,14 @@ const ajoutStockAdmin = async (req, res) => {
         partNumber: partNumber,
       },
     });
-    if(sequence ==="x")
-    if (!gammeFromDB) {
-      gammeFromDB = await gamme.create({
-        sequence,
-        partNumber,
-        projetNom,
-      });
-    }
+    if (sequence === "x")
+      if (!gammeFromDB) {
+        gammeFromDB = await gamme.create({
+          sequence,
+          partNumber,
+          projetNom,
+        });
+      }
 
     let patternFromDB = await pattern.findOne({
       where: {
@@ -156,7 +173,6 @@ const ajoutStockAdmin = async (req, res) => {
       .json({ message: "Erreur interne du serveur", error: error.message });
   }
 };
-
 
 const getAllStock = async (req, res) => {
   try {
