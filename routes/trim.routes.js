@@ -11,7 +11,7 @@ router.get("/sites", getSites);
 router.get("/lieu-detection", getLieuDetection);
 router.get(
   "/fonction",
-  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS"]),
+  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNEUR_STOCK"]),
   getFonction
 );
 

@@ -49,6 +49,15 @@ const demandeMUS = sequelize.define(
       type: DataTypes.STRING(55),
       allowNull: false,
     },
+    livreePar: {
+      type: DataTypes.STRING(55),
+    },
+    accepterPar: {
+      type: DataTypes.STRING(55),
+    },
+    annulerPar: {
+      type: DataTypes.STRING(55),
+    },
 
     date_creation: {
       type: DataTypes.DATEONLY,

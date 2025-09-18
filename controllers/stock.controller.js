@@ -3,8 +3,10 @@ const pattern = require("../models/pattern");
 const material = require("../models/material");
 const { Sequelize } = require("sequelize");
 const { mouvementCreation } = require("../services/mouvementStockService");
+const { getStockQuantity } = require("../services/checkStockService");
 
 const ajoutStock = async (req, res) => {
+  const currentUserId = req.user.id;
   try {
     const {
       sequence,
@@ -21,13 +23,9 @@ const ajoutStock = async (req, res) => {
         partNumber: partNumber,
       },
     });
-    console.log("---------------------gammeFromDB------------------------");
     console.log(gammeFromDB);
 
     if (!gammeFromDB) {
-      console.log(
-        "----------------------gammeFromDB NOT EXISTE ///////////////////////////////////////////"
-      );
       gammeFromDB = await gamme.create({
         sequence,
         partNumber,
@@ -41,23 +39,12 @@ const ajoutStock = async (req, res) => {
         id_gamme: gammeFromDB.id,
       },
     });
-    console.log(
-      "--------------------- gammeFromDB.id ------------------------"
-    );
-    console.log(gammeFromDB.id);
-    console.log("---------------------patternFromDB------------------------");
-    console.log(patternFromDB);
-    if (!patternFromDB) {
-      console.log(
-        "----------------------patternFromDB NOT EXISTE ///////////////////////////////////////////"
-      );
 
+    if (!patternFromDB) {
       let materialFromDB = await material.findOne({
         where: { partNumberMaterial },
       });
-      console.log(
-        "---------------------materialFromDB------------------------"
-      );
+
       console.log(materialFromDB);
       if (!materialFromDB) {
         materialFromDB = await material.create({
@@ -84,7 +71,8 @@ const ajoutStock = async (req, res) => {
       partNumberMaterial,
       quantiteAjouter,
       "Introduite",
-      projetNom
+      projetNom,
+      currentUserId
     );
     return res.status(200).json({
       message: "Pattern ajouté avec succès",
@@ -160,7 +148,8 @@ const ajoutStockAdmin = async (req, res) => {
       partNumberMaterial,
       quantiteAjouter,
       "Introduite",
-      projetNom
+      projetNom,
+      currentUserId
     );
     return res.status(200).json({
       message: "Pattern ajouté avec succès",
@@ -183,8 +172,7 @@ const getAllStock = async (req, res) => {
         "quantite",
         [Sequelize.col("material.partNumberMaterial"), "partNumberMaterial"],
         [Sequelize.col("gamme.partNumber"), "partNumber"],
-        [Sequelize.col("gamme.sequence"), "sequence"],
-        [Sequelize.col("gamme.projet.nom"), "projetName"],
+        [Sequelize.col("gamme.projetNom"), "projetNom"],
       ],
       include: [
         {
@@ -196,13 +184,6 @@ const getAllStock = async (req, res) => {
           model: gamme,
           attributes: [],
           as: "gamme",
-          include: [
-            {
-              model: projet,
-              attributes: [],
-              as: "projet",
-            },
-          ],
         },
       ],
       raw: true,
@@ -215,32 +196,18 @@ const getAllStock = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 const checkStock = async (req, res) => {
   const { partNumber, patternNumb } = req.body;
   console.log("req.body:", req.body);
 
   try {
-    let quantiteDisponible = 0;
+    const quantiteDisponible = await getStockQuantity(partNumber, patternNumb);
 
-    const gammeFromDB = await gamme.findOne({
-      where: { partNumber },
-    });
-    if (gammeFromDB) {
-      const patternFromDB = await pattern.findOne({
-        where: {
-          patternNumb: patternNumb,
-          id_gamme: gammeFromDB.id,
-        },
-      });
-
-      if (patternFromDB) {
-        quantiteDisponible = patternFromDB.quantite;
-      }
-    }
-
-    res.status(200).json({ data: quantiteDisponible });
+    return res.status(200).json({ data: quantiteDisponible });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error("Server error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
@@ -263,10 +230,30 @@ const getPatterns = async (req, res) => {
     res.status(404).json({ message: " Part number introuvable" });
   }
 };
+const updateStock = async (req, res) => {
+  const { idStock, qteAjour } = req.body;
+
+  try {
+    await pattern.update(
+      {
+        quantite: qteAjour,
+      },
+      {
+        where: { id: idStock },
+      }
+    );
+    res.status(200).json({ message: "Quantité à jour" });
+  } catch (error) {
+    console.log(error);
+
+    return res.status(500).json({ message: "Server error" });
+  }
+};
 module.exports = {
   ajoutStock,
   getAllStock,
   ajoutStockAdmin,
   checkStock,
   getPatterns,
+  updateStock,
 };

@@ -86,9 +86,7 @@ const createDemande = async (req, res) => {
         })),
         { returning: true }
       );
-      console.log(
-        "------------------------------------------------- email --------------------------------------------"
-      );
+
       const email = await getEmail(newDemande.id_userMUS);
 
       // await sendEmail({
@@ -269,6 +267,9 @@ const getDemandeById = async (req, res) => {
         "demandeur",
         "heure",
         "projetNom",
+        "accepterPar",
+        "livreePar",
+        "annulerPar",
         [Sequelize.col("site.nom"), "siteNom"],
         [Sequelize.col("lieuDetection.nom"), "nomDetection"],
         "sequence",
@@ -312,6 +313,7 @@ const getDemandeById = async (req, res) => {
 
 const acceptDemandeAgent = async (req, res) => {
   const { id } = req.params;
+  const fullName = `${req.user.firstName} ${req.user.lastName}`;
   try {
     const demande = await demandeMUS.findOne({
       where: { id },
@@ -387,7 +389,8 @@ const acceptDemandeAgent = async (req, res) => {
               sub.materialPartNumber,
               delivered,
               "Livré",
-              demande.projetNom
+              demande.projetNom,
+              demande.id_userMUS
             );
           }
 
@@ -399,7 +402,21 @@ const acceptDemandeAgent = async (req, res) => {
         }
       }
     }
-    await demandeMUS.update({ statusDemande: newStatus }, { where: { id } });
+    if (newStatus == "Préparation en cours") {
+      await demandeMUS.update(
+        { statusDemande: newStatus, accepterPar: fullName },
+        { where: { id } }
+      );
+    }
+    if (
+      newStatus == "Demande livrée" ||
+      newStatus == "Demande partiellement livrée"
+    ) {
+      await demandeMUS.update(
+        { statusDemande: newStatus, livreePar: fullName },
+        { where: { id } }
+      );
+    }
 
     return res.status(200).json({
       message: newStatus,
@@ -417,6 +434,7 @@ const acceptDemandeAgent = async (req, res) => {
 const annulerDemandeDemandeur = async (req, res) => {
   const { id } = req.params;
   const currentUserId = req.user.id;
+  const fullName = `${req.user.firstName} ${req.user.lastName}`;
 
   const roleList = await getUserRoles(currentUserId);
 
@@ -461,7 +479,7 @@ const annulerDemandeDemandeur = async (req, res) => {
           await patternFromDB.save();
 
           await demandeMUS.update(
-            { statusDemande: "Demande annulé" },
+            { statusDemande: "Demande annulé", annulerPar: fullName },
             { where: { id } }
           );
         }

@@ -1,3 +1,4 @@
+const { userMUS } = require("../models");
 const mouvementStock = require("../models/mouvementStock");
 
 const mouvementCreation = async (
@@ -7,9 +8,15 @@ const mouvementCreation = async (
   partNumberMaterial,
   quantite,
   statusMouvement,
-  projetNom
+  projetNom,
+  id_userMUS
 ) => {
   try {
+    const userFromDB = await userMUS.findByPk(id_userMUS);
+    console.log("userFromDB");
+    console.log(userFromDB.firstName);
+    console.log(userFromDB.lastName);
+
     const newMouvement = await mouvementStock.create({
       sequence,
       partNumber,
@@ -18,6 +25,8 @@ const mouvementCreation = async (
       quantite,
       statusMouvement,
       projetNom,
+      id_userMUS,
+      mvt_create: `${userFromDB.lastName} ${userFromDB.firstName}`,
     });
 
     return newMouvement;

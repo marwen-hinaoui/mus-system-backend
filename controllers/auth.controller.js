@@ -6,8 +6,8 @@ const getUserRoles = require("../middleware/getUserRoles");
 const user_role_MUS = require("../models/user_role_MUS");
 const site = require("../models/site");
 const fonction = require("../models/fonction");
-const { Sequelize } = require("sequelize");
-// const { transporter, mailOptions } = require("../middleware/init_smtp");
+const { Sequelize, Op } = require("sequelize");
+const { transporter, mailOptions } = require("../middleware/send_mail");
 const blacklistedRefreshTokens = new Set();
 require("dotenv").config();
 
@@ -34,7 +34,8 @@ const login = async (req, res) => {
       redirect = "/admin";
     } else if (
       roleList.includes("DEMANDEUR") ||
-      roleList.includes("AGENT_MUS")
+      roleList.includes("AGENT_MUS") ||
+      roleList.includes("GESTIONNEUR_STOCK")
     ) {
       redirect = "/user";
     }
@@ -180,6 +181,9 @@ const logout = (req, res) => {
 };
 
 const getUsers = async (req, res) => {
+  let authenticatedUserId = req.user.id;
+  console.log(req.user);
+
   try {
     const getUsersFromDB = await userMUS.findAll({
       attributes: [
@@ -192,6 +196,15 @@ const getUsers = async (req, res) => {
         [Sequelize.col("fonction.nom"), "fonctioNom"],
         [Sequelize.col("site.nom"), "siteNom"],
       ],
+      where: {
+        id: {
+          [Op.ne]: authenticatedUserId,
+        },
+
+        email: {
+          [Op.ne]: "hmarwen@lear.com",
+        },
+      },
       include: [
         { model: site, attributes: [], as: "site" },
         { model: fonction, attributes: [], as: "fonction" },
@@ -270,36 +283,6 @@ const deleteUser = async (req, res) => {
       .json({ message: "Erreur serveur lors de la suppression" });
   }
 };
-const nodemailer = require("nodemailer");
-
-const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: "marwenhinaouii@gmail.com",
-    pass: "fuwz czxt xlok skrk", // App Password متاع Gmail
-  },
-});
-
-const mailOptions = {
-  from: '"MUS" <marwenhinaouii@gmail.com>',
-  to: "hmarwen@lear.com",
-  subject: "Hello from MUS!",
-  html: "<b>This is the HTML body of the email.</b>",
-};
-
-// const sendMail = async (req, res) => {
-//   try {
-//     await transporter.sendMail(mailOptions);
-//     return res.status(200).json({ message: "Email envoyé avec succès" });
-//   } catch (error) {
-//     console.error(error);
-//     return res
-//       .status(500)
-//       .json({ message: "Erreur serveur lors de l’envoi de l’email" });
-//   }
-// };
 
 module.exports = {
   logout,
@@ -309,5 +292,4 @@ module.exports = {
   getUsers,
   updatePassword,
   deleteUser,
-  // sendMail,
 };

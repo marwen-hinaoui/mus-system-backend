@@ -52,7 +52,7 @@ const getMaterial = async (req, res) => {
     res.status(500).send("Error fetching getProjet");
   }
 };
-const getPartNumbers = async (req, res) => {
+const getPatterns = async (req, res) => {
   const { cover_pn } = req.params;
 
   try {
@@ -70,4 +70,4 @@ const getPartNumbers = async (req, res) => {
   }
 };
 
-module.exports = { getSequences, getPartNumbers, getProjet, getMaterial };
+module.exports = { getSequences, getPatterns, getProjet, getMaterial };

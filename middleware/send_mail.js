@@ -25,31 +25,48 @@ const sendEmail = async ({ to, subject, html }) => {
 };
 
 const buildTable = (subs) => `
-      <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;width:100%;font-family:Arial, sans-serif;font-size:14px;">
-        <thead style="background:#f2f2f2;">
-          <tr>
-            <th align="left">Part Number</th>
-            <th align="left">Pattern N°</th>
-            <th align="left">Quantité demandée</th>
-            <th align="left">Quantité disponible</th>
-            <th align="left">Statut</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${subs
-            .map(
-              (s) => `
-            <tr>
-              <td>${s.partNumber || "-"}</td>
-              <td>${s.patternNumb || "-"}</td>
-              <td>${s.quantite || 0}</td>
-              <td>${s.quantiteDisponible ?? "-"}</td>
-              <td>${s.statusSubDemande || "-"}</td>
-            </tr>`
-            )
-            .join("")}
-        </tbody>
-      </table>
-    `;
-
+  <table border="0" cellspacing="0" cellpadding="0" width="100%" 
+    style="border-collapse:separate;border-spacing:0;font-family:Arial, sans-serif;
+           font-size:14px;border:1px solid #ddd;border-radius:4px;overflow:hidden;">
+    <thead>
+      <tr style="background:#FAFAFA;">
+        <th align="left" style="padding:10px;border-bottom:1px solid #ddd;">Part Number</th>
+        <th align="left" style="padding:10px;border-bottom:1px solid #ddd;">Pattern N°</th>
+        <th align="left" style="padding:10px;border-bottom:1px solid #ddd;">Quantité demandée</th>
+        <th align="left" style="padding:10px;border-bottom:1px solid #ddd;">Quantité disponible</th>
+        <th align="left" style="padding:10px;border-bottom:1px solid #ddd;">Statut</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${subs
+        .map(
+          (s, i) => `
+        <tr style="background:${i % 2 === 0 ? "#ffffff" : "#fefefe"};">
+          <td style="padding:8px;border-top:1px solid #eee;">${
+            s.partNumber || "-"
+          }</td>
+          <td style="padding:8px;border-top:1px solid #eee;">${
+            s.patternNumb || "-"
+          }</td>
+          <td style="padding:8px;border-top:1px solid #eee;">${
+            s.quantite || 0
+          }</td>
+          <td style="padding:8px;border-top:1px solid #eee;">${
+            s.quantiteDisponible ?? "-"
+          }</td>
+          <td style="padding:8px;border-top:1px solid #eee;font-weight:bold;color:${
+            s.statusSubDemande === "Validé"
+              ? "green"
+              : s.statusSubDemande === "Rejeté"
+              ? "red"
+              : "#e67e22"
+          };">
+            ${s.statusSubDemande || "-"}
+          </td>
+        </tr>`
+        )
+        .join("")}
+    </tbody>
+  </table>
+`;
 module.exports = { sendEmail, buildTable };

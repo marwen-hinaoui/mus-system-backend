@@ -10,6 +10,7 @@ const gamme = require("./gamme");
 const lieuDetection = require("./lieuDetection");
 const fonction = require("./fonction");
 const user_role_MUS = require("./user_role_MUS");
+const mouvementStock = require("./mouvementStock");
 
 userMUS.belongsTo(fonction, { foreignKey: "id_fonction", as: "fonction" });
 
@@ -19,6 +20,12 @@ site.hasMany(userMUS, { foreignKey: "id_site", as: "userMUS" });
 demandeMUS.belongsTo(userMUS, {
   foreignKey: "id_userMUS",
   as: "userMUS",
+  onDelete: "SET NULL",
+});
+
+mouvementStock.belongsTo(userMUS, {
+  foreignKey: "id_userMUS",
+  as: "user",
   onDelete: "SET NULL",
 });
 

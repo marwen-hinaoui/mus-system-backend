@@ -42,6 +42,13 @@ const mouvementStock = sequelize.define(
       type: DataTypes.STRING(55),
       allowNull: false,
     },
+    mvt_create: {
+      type: DataTypes.STRING(33),
+      allowNull: false,
+    },
+    id_userMUS: {
+      type: DataTypes.INTEGER,
+    },
     heure: {
       type: DataTypes.STRING,
       allowNull: false,

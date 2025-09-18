@@ -9,7 +9,7 @@ app.use(bodyParser.json());
 
 app.use(
   cors({
-    origin: ["http://10.50.66.246:3002", "http://127.0.0.1:3002"],
+    origin: ["http://10.50.66.246:3002"],
     credentials: true,
   })
 );
@@ -37,12 +37,12 @@ app.use("/api/stock", require("./routes/stock.routes"));
 require("./services/demandeExpirationService");
 
 // ====== SERVE REACT BUILD ======
-// const buildPath = path.join(__dirname, "./build");
-// app.use(express.static(buildPath));
+const buildPath = path.join(__dirname, "./build");
+app.use(express.static(buildPath));
 
-// app.all("/{*any}", (req, res) => {
-//   res.sendFile(path.join(buildPath, "index.html"));
-// });
+app.all("/{*any}", (req, res) => {
+  res.sendFile(path.join(buildPath, "index.html"));
+});
 // ===============================
 
 const HOST = process.env.HOST?.trim();

@@ -4,6 +4,7 @@ const subDemandeMUS = require("../models/subDemandeMUS");
 const gamme = require("../models/gamme");
 const material = require("../models/material");
 const pattern = require("../models/pattern");
+const { sendEmail, buildTable } = require("./middleware/send_mail");
 
 subscriber.subscribe("__keyevent@0__:expired", (err) => {
   if (err) console.error("Redis subscription error:", err);
@@ -55,10 +56,23 @@ subscriber.on("message", async (channel, key) => {
     }
   }
 
-  await demandeMUS.update(
+  const newDemande = await demandeMUS.update(
     { statusDemande: "Demande annulée (Délai 48h)" },
     { where: { id: demandeId } }
   );
 
+  const email = await getEmail(newDemande.id_userMUS);
+
+  // await sendEmail({
+  //   to: email,
+  //   subject: `Status demande:  ${newDemande.statusDemande} - ${newDemande.numDemande}`,
+  //   html: `
+  //       <h3>Status demande: ${newDemande.statusDemande}</h3>
+  //       <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
+  //       <p><b>Status:</b> ${newDemande.statusDemande}</p>
+  //       <h4>Détails:</h4>
+  //       ${buildTable(createdSubs)}
+  //        `,
+  // });
   console.log(`Demande ${demandeId} annulée after 48h`);
 });
