@@ -57,8 +57,8 @@ const login = async (req, res) => {
 
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production" ? true : false, // only secure for  https
-      sameSite: "Lax",
+      secure: true,
+      sameSite: "None",
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -124,6 +124,7 @@ const signUp = async (req, res) => {
 
 const refreshAccessToken = async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
+  console.log(refreshToken);
 
   if (!refreshToken)
     return res.status(401).json({ message: "No refresh token" });
@@ -173,8 +174,8 @@ const logout = (req, res) => {
 
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "Lax",
+      secure: true,
+      sameSite: "None",
     });
   }
   return res.status(200).json({ message: "Déconnecté, token blacklisté" });

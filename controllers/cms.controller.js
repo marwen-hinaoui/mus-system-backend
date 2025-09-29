@@ -1,4 +1,5 @@
 const { getPool } = require("../config/db_plt");
+const getPatternsSQL = require("../middleware/sqlQuery");
 
 const getSequences = async (req, res) => {
   const { sequence } = req.params;
@@ -56,14 +57,10 @@ const getPatterns = async (req, res) => {
   const { cover_pn } = req.params;
 
   try {
-    const pool = await getPool();
-    const result = await pool
-      .request()
-      .query(
-        `SELECT [panel_number] FROM  [plt_viewer].[dbo].[files] WHERE [part_number_cover] = '${cover_pn}'`
-      );
+    const result = await getPatternsSQL(cover_pn);
+    console.log(result);
 
-    res.json(result.recordset);
+    return res.json(result.recordset);
   } catch (err) {
     console.error("Error in getPartNumbers:", err);
     res.status(500).send("Error fetching getPartNumbers");
