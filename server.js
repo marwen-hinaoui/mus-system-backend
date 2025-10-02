@@ -9,7 +9,14 @@ app.use(bodyParser.json());
 
 app.use(
   cors({
-    origin: ["http://10.50.66.246:3002", "http://10.50.120.63:3002", "http://tnbzt-sql01:3000", "http://localhost:3002", "http://127.0.0.1:3002"],
+    origin: [
+      "http://10.50.120.63:3000",
+      "http://tnbzt-sql01:3000",
+      "http://localhost:3002",
+      "http://localhost:3000",
+      "http://127.0.0.1:3002",
+      "http://127.0.0.1:3000",
+    ],
     credentials: true,
   })
 );
@@ -23,7 +30,7 @@ app.use(
 //     credentials: true,
 //   })
 // );
-  
+
 const cookieParser = require("cookie-parser");
 const { sequelize } = require("./models");
 app.use(cookieParser());

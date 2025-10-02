@@ -89,17 +89,17 @@ const createDemande = async (req, res) => {
 
       const email = await getEmail(newDemande.id_userMUS);
 
-      // await sendEmail({
-      //   to: email,
-      //   subject: `Status demande:  ${newDemande.statusDemande} - ${newDemande.numDemande}`,
-      //   html: `
-      //       <h3>Status demande: ${newDemande.statusDemande}</h3>
-      //       <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
-      //       <p><b>Status:</b> ${newDemande.statusDemande}</p>
-      //       <h4>Détails:</h4>
-      //       ${buildTable(createdSubs)}
-      //        `,
-      // });
+      await sendEmail({
+        to: email,
+        subject: `Status demande:  ${newDemande.statusDemande} - ${newDemande.numDemande}`,
+        html: `
+            <h3>Status demande: ${newDemande.statusDemande}</h3>
+            <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
+            <p><b>Status:</b> ${newDemande.statusDemande}</p>
+            <h4>Détails:</h4>
+            ${buildTable(createdSubs)}
+             `,
+      });
       return res.status(201).json({
         message:
           "Demande hors stock! Vous pouvez faire une demande PLS avec le numéro",
@@ -132,7 +132,7 @@ const comfirmDemande = async (req, res) => {
 
     const newDemande = await demandeMUS.create({
       ...demandeData,
-      statusDemande: "Demande initié",
+      statusDemande: "Demande initiée",
     });
 
     await redis.set(`demande:${newDemande.id}`, "pending");
@@ -186,17 +186,17 @@ const comfirmDemande = async (req, res) => {
     );
     const email = await getEmail(newDemande.id_userMUS);
 
-    // await sendEmail({
-    //   to: email,
-    //   subject: `Status demande: ${newDemande.statusDemande} - ${newDemande.numDemande}`,
-    //   html: `
-    //   <h3>Status demande: ${newDemande.statusDemande}</h3>
-    //   <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
-    //   <p><b>Status:</b> ${newDemande.statusDemande}</p>
-    //   <h4>Détails:</h4>
-    //       ${buildTable(subDemandes)}
-    // `,
-    // });
+    await sendEmail({
+      to: email,
+      subject: `Status demande: ${newDemande.statusDemande} - ${newDemande.numDemande}`,
+      html: `
+      <h3>Status demande: ${newDemande.statusDemande}</h3>
+      <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
+      <p><b>Status:</b> ${newDemande.statusDemande}</p>
+      <h4>Détails:</h4>
+          ${buildTable(subDemandes)}
+    `,
+    });
     const hasStockLimite = subDemandes.some(
       (sub) =>
         sub.statusSubDemande === "Hors stock" ||
@@ -312,7 +312,10 @@ const getDemandeById = async (req, res) => {
 };
 
 const acceptDemandeAgent = async (req, res) => {
+  const { nameButton } = req.body;
   const { id } = req.params;
+  console.log("nameButton: ", nameButton);
+
   const fullName = `${req.user.firstName} ${req.user.lastName}`;
   try {
     const demande = await demandeMUS.findOne({
@@ -325,21 +328,21 @@ const acceptDemandeAgent = async (req, res) => {
     }
 
     let newStatus = demande.statusDemande;
-    if (demande.statusDemande === "Demande initié") {
+    if (demande.statusDemande === "Demande initiée") {
       newStatus = "Préparation en cours";
       const email = await getEmail(demande.id_userMUS);
 
-      // await sendEmail({
-      //   to: email,
-      //   subject: `Status demande : ${newStatus} - ${demande.numDemande}`,
-      //   html: `
-      //         <h3>Status demande: ${newStatus}</h3>
-      //         <p>Numéro de demande: <b>${demande.numDemande}</b></p>
-      //         <p><b>Status:</b> ${newStatus}</p>
-      //         <h4>Détails:</h4>
-      //             ${buildTable(demande.subDemandeMUS)}
-      //       `,
-      // });
+      await sendEmail({
+        to: email,
+        subject: `Status demande : ${newStatus} - ${demande.numDemande}`,
+        html: `
+              <h3>Status demande: ${newStatus}</h3>
+              <p>Numéro de demande: <b>${demande.numDemande}</b></p>
+              <p><b>Status:</b> ${newStatus}</p>
+              <h4>Détails:</h4>
+                  ${buildTable(demande.subDemandeMUS)}
+            `,
+      });
     }
     if (demande.statusDemande === "Préparation en cours") {
       // check subDemandes
@@ -402,26 +405,47 @@ const acceptDemandeAgent = async (req, res) => {
         }
       }
     }
-    if (newStatus == "Préparation en cours") {
+    if (
+      demande.statusDemande == "Demande initiée" &&
+      nameButton == "Accepter"
+    ) {
       await demandeMUS.update(
         { statusDemande: newStatus, accepterPar: fullName },
         { where: { id } }
       );
+      res.status(200).json({
+        message: newStatus,
+        data: { id, newStatus },
+      });
+    } else if (
+      demande.statusDemande == "Préparation en cours" &&
+      nameButton == "Accepter"
+    ) {
+      res.status(500).json({
+        message: "Status déja changé!",
+      });
     }
     if (
-      newStatus == "Demande livrée" ||
-      newStatus == "Demande partiellement livrée"
+      demande.statusDemande == "Préparation en cours" &&
+      nameButton == "Livree"
     ) {
       await demandeMUS.update(
         { statusDemande: newStatus, livreePar: fullName },
         { where: { id } }
       );
+      res.status(200).json({
+        message: newStatus,
+        data: { id, newStatus },
+      });
+    } else if (
+      (demande.statusDemande == "Demande livrée" ||
+        demande.statusDemande == "Demande partiellement livrée") &&
+      nameButton == "Livree"
+    ) {
+      res.status(500).json({
+        message: "Status déja changé!",
+      });
     }
-
-    return res.status(200).json({
-      message: newStatus,
-      data: { id, newStatus },
-    });
   } catch (error) {
     console.error(error);
     return res.status(500).json({
@@ -451,7 +475,7 @@ const annulerDemandeDemandeur = async (req, res) => {
       return res.status(404).json({ message: "Demande not found" });
     }
 
-    if (demande.statusDemande === "Demande initié") {
+    if (demande.statusDemande === "Demande initiée") {
       for (const sub of subDemandeFromDB) {
         if (
           sub.statusSubDemande === "En stock" ||
