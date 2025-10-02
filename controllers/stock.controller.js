@@ -86,6 +86,8 @@ const ajoutStock = async (req, res) => {
   }
 };
 const ajoutStockAdmin = async (req, res) => {
+  const currentUserId = req.user.id;
+
   try {
     const {
       sequence,
