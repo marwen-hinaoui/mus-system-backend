@@ -1,4 +1,3 @@
-// redisSubscriber.js
 const { subscriber, redis } = require("../redisClient");
 const demandeMUS = require("../models/demandeMUS");
 const subDemandeMUS = require("../models/subDemandeMUS");
@@ -25,7 +24,7 @@ subscriber.on("message", async (channel, key) => {
     include: [{ model: subDemandeMUS, as: "subDemandeMUS" }],
   });
 
-  if (!demande || demande.statusDemande !== "Demande initié") return;
+  if (!demande || demande.statusDemande !== "Demande initiée") return;
 
   for (const sub of demande.subDemandeMUS) {
     if (
@@ -64,7 +63,6 @@ subscriber.on("message", async (channel, key) => {
 
   console.log(`Demande ${demandeId} annulée after 48h`);
 });
-
 
 setInterval(async () => {
   const keys = await new Promise((resolve) =>

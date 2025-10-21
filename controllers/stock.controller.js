@@ -251,6 +251,292 @@ const updateStock = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
+
+// const updateMassiveStock = async (req, res) => {
+//   const { dataQte } = req.body;
+//   console.log(dataQte);
+
+//   try {
+//     dataQte.map(async (element) => {
+//       const gammeFromDB = await gamme.findOne({
+//         where: {
+//           partNumber: element.partNumber,
+//         },
+//       });
+//       if (gammeFromDB) {
+//         await pattern.update(
+//           {
+//             quantite: element.quantite,
+//           },
+//           {
+//             where: {
+//               id_gamme: gammeFromDB.id,
+//               patternNumb: element.partNumber,
+//             },
+//           }
+//         );
+//       }
+//     });
+//     res.status(200).json({
+//       message: "update success!",
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     return res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+// const updateMassiveStock = async (req, res) => {
+//   const { dataQte } = req.body;
+
+//   if (!Array.isArray(dataQte) || dataQte.length === 0) {
+//     return res
+//       .status(400)
+//       .json({ message: "dataQte must be a non-empty array" });
+//   }
+
+//   const results = [];
+//   let updatedCount;
+//   try {
+//     for (const element of dataQte) {
+//       try {
+//         const gammeFromDB = await gamme.findOne({
+//           where: { partNumber: element.partNumber },
+//         });
+
+//         if (!gammeFromDB) {
+//           results.push({
+//             partNumber: element.partNumber,
+//             updated: false,
+//           });
+//           continue;
+//         }
+//         // const updatedCount = await pattern.update(
+//         //   { quantite: element.quantite },
+//         //   {
+//         //     where: {
+//         //       id_gamme: gammeFromDB.id,
+//         //       patternNumb: element.patternNumb,
+//         //     },
+//         //   }
+//         // );
+
+//         const patternFromDB = await pattern.findOne({
+//           where: {
+//             id_gamme: gammeFromDB.id,
+//             patternNumb: element.patternNumb,
+//           },
+//         });
+
+//         if (patternFromDB && patternFromDB.quantite !== element.quantite) {
+//           patternFromDB.quantite = element.quantite;
+//           await patternFromDB.save();
+//           results.push({
+//             partNumber: element.partNumber,
+//             pattern: patternFromDB.patternNumb,
+//             updated: true,
+//           });
+//         } else {
+//           results.push({
+//             partNumber: element.partNumber,
+//             pattern: element.patternNumb,
+//             updated: false,
+//           });
+//           console.log(
+//             "-----------------------updatedCount------------------------------"
+//           );
+//           console.log(updatedCount);
+//         }
+//       } catch (error) {
+//         console.log(error);
+//       }
+//     }
+
+//     const updated = results.filter((r) => r.updated === true).length;
+//     res.status(200).json({
+//       message: "Update process completed",
+//       updated,
+//       details: results,
+//     });
+//   } catch (error) {
+//     console.error("Massive update error:", error);
+//     res.status(500).json({
+//       message: "Server error during massive update",
+//       error: error.message,
+//     });
+//   }
+// };
+
+const checkMassiveStock = async (req, res) => {
+  const { dataQte } = req.body;
+
+  if (!Array.isArray(dataQte) || dataQte.length === 0) {
+    return res
+      .status(400)
+      .json({ message: "dataQte must be a non-empty array" });
+  }
+
+  const results = [];
+
+  try {
+    for (const element of dataQte) {
+      try {
+        const gammeFromDB = await gamme.findOne({
+          where: { partNumber: element.partNumber },
+        });
+
+        if (!gammeFromDB) {
+          results.push({
+            partNumber: element.partNumber,
+            pattern: element.patternNumb,
+            updated: false,
+            reason: "gamme not found",
+          });
+          continue;
+        }
+
+        const patternFromDB = await pattern.findOne({
+          where: {
+            id_gamme: gammeFromDB.id,
+            patternNumb: element.patternNumb,
+          },
+        });
+
+        if (!patternFromDB) {
+          results.push({
+            partNumber: element.partNumber,
+            pattern: element.patternNumb,
+            updated: false,
+          });
+          continue;
+        }
+
+        if (Number(patternFromDB.quantite) !== Number(element.quantite)) {
+          results.push({
+            partNumber: element.partNumber,
+            pattern: element.patternNumb,
+            updated: true,
+            qteChangement: [patternFromDB.quantite, Number(element.quantite)],
+          });
+        } else {
+          results.push({
+            partNumber: element.partNumber,
+            pattern: element.patternNumb,
+            updated: false,
+          });
+        }
+      } catch (error) {
+        console.log("Error updating element:", element, error);
+        results.push({
+          partNumber: element.partNumber,
+          pattern: element.patternNumb,
+          updated: false,
+        });
+      }
+    }
+
+    const updated = results.filter((r) => r.updated).length;
+    const finalResult = results.filter((r) => r.updated);
+    res.status(200).json({
+      message: "Check process completed",
+      updated,
+      details: finalResult,
+    });
+  } catch (error) {
+    console.error("Massive update error:", error);
+    res.status(500).json({
+      message: "Server error during massive update",
+      error: error.message,
+    });
+  }
+};
+const updateMassiveStock = async (req, res) => {
+  const { dataQte } = req.body;
+
+  if (!Array.isArray(dataQte) || dataQte.length === 0) {
+    return res
+      .status(400)
+      .json({ message: "dataQte must be a non-empty array" });
+  }
+
+  const results = [];
+
+  try {
+    for (const element of dataQte) {
+      try {
+        const gammeFromDB = await gamme.findOne({
+          where: { partNumber: element.partNumber },
+        });
+
+        if (!gammeFromDB) {
+          results.push({
+            partNumber: element.partNumber,
+            pattern: element.patternNumb,
+            updated: false,
+            reason: "gamme not found",
+          });
+          continue;
+        }
+
+        const patternFromDB = await pattern.findOne({
+          where: {
+            id_gamme: gammeFromDB.id,
+            patternNumb: element.patternNumb,
+          },
+        });
+
+        if (!patternFromDB) {
+          results.push({
+            partNumber: element.partNumber,
+            pattern: element.patternNumb,
+            updated: false,
+          });
+          continue;
+        }
+
+        if (Number(patternFromDB.quantite) !== Number(element.quantite)) {
+          patternFromDB.quantite = element.quantite;
+          await patternFromDB.save();
+
+          results.push({
+            partNumber: element.partNumber,
+            pattern: element.patternNumb,
+            updated: true,
+            oldQuantity: patternFromDB.quantite,
+            newQuantity: element.quantite,
+          });
+        } else {
+          results.push({
+            partNumber: element.partNumber,
+            pattern: element.patternNumb,
+            updated: false,
+          });
+        }
+      } catch (error) {
+        console.log("Error updating element:", element, error);
+        results.push({
+          partNumber: element.partNumber,
+          pattern: element.patternNumb,
+          updated: false,
+        });
+      }
+    }
+
+    const updated = results.filter((r) => r.updated).length;
+
+    res.status(200).json({
+      message: "Update process completed",
+      updated,
+      details: results,
+    });
+  } catch (error) {
+    console.error("Massive update error:", error);
+    res.status(500).json({
+      message: "Server error during massive update",
+      error: error.message,
+    });
+  }
+};
 module.exports = {
   ajoutStock,
   getAllStock,
@@ -258,4 +544,6 @@ module.exports = {
   checkStock,
   getPatterns,
   updateStock,
+  updateMassiveStock,
+  checkMassiveStock,
 };

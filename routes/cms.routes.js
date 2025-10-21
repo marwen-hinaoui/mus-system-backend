@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const {
-  getSequences,
+  getPNFromSequences,
   getPatterns,
   getProjet,
   getMaterial,
@@ -10,22 +10,22 @@ const verifyTokenAndRole = require("../middleware/verifyTokenAndRole");
 
 router.get(
   "/sequences/:sequence",
-  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNEUR_STOCK"]),
-  getSequences
+  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
+  getPNFromSequences
 );
 router.get(
   "/patterns/:cover_pn",
-  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNEUR_STOCK"]),
+  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   getPatterns
 );
 router.get(
   "/projet/:cover_pn",
-  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNEUR_STOCK"]),
+  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   getProjet
 );
 router.get(
   "/material/:cover_pn/:panel_number",
-  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNEUR_STOCK"]),
+  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   getMaterial
 );
 

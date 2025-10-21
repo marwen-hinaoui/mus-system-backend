@@ -10,29 +10,17 @@ app.use(bodyParser.json());
 app.use(
   cors({
     origin: [
-      "http://10.50.120.63:3000",
       "http://tnbzt-sql01:3000",
       "http://localhost:3002",
       "http://localhost:3000",
-      "http://127.0.0.1:3002",
-      "http://127.0.0.1:3000",
     ],
     credentials: true,
   })
 );
 
-// const CORS_HOST = process.env.CORS_HOST?.trim();
-// const CORS_PORT = process.env.CORS_PORT?.trim();
-// console.log(`CORS running at http://${CORS_HOST}:${CORS_PORT}`);
-// app.use(
-//   cors({
-//     origin: [`http://${CORS_HOST}:${CORS_PORT}`],
-//     credentials: true,
-//   })
-// );
-
 const cookieParser = require("cookie-parser");
 const { sequelize } = require("./models");
+const { restoreTimersOnStartup } = require("./scheduleDemandeExpiration");
 app.use(cookieParser());
 
 app.use("/api/auth", require("./routes/auth.routes"));
@@ -45,16 +33,18 @@ app.use("/api/rebuild", require("./routes/rebuild.routes"));
 require("./services/demandeExpirationService");
 
 // ====== SERVE REACT BUILD ======
-const buildPath = path.join(__dirname, "./build");
-app.use(express.static(buildPath));
+// const buildPath = path.join(__dirname, "./build");
+// app.use(express.static(buildPath));
 
-app.all("/{*any}", (req, res) => {
-  res.sendFile(path.join(buildPath, "index.html"));
-});
+// app.all("/{*any}", (req, res) => {
+//   res.sendFile(path.join(buildPath, "index.html"));
+// });
 // ===============================
 
 const HOST = process.env.HOST?.trim();
 const PORT = process.env.PORT?.trim();
+
+restoreTimersOnStartup();
 app.listen(PORT, HOST, async () => {
   try {
     await sequelize.authenticate();

@@ -10,12 +10,12 @@ router.post(
 );
 router.get(
   "/all",
-  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNEUR_STOCK"]),
+  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   demandeController.getDemande
 );
 router.get(
   "/details/:id",
-  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNEUR_STOCK"]),
+  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   demandeController.getDemandeById
 );
 
@@ -26,7 +26,7 @@ router.post(
 );
 router.post(
   "/status/change/:id",
-  verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNEUR_STOCK"]),
+  verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   demandeController.acceptDemandeAgent
 );
 router.post(

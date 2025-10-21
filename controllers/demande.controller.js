@@ -4,6 +4,7 @@ const gamme = require("../models/gamme");
 const pattern = require("../models/pattern");
 const { Sequelize } = require("sequelize");
 const site = require("../models/site");
+const projet = require("../models/projet");
 const userMUS = require("../models/userMUS");
 const { mouvementCreation } = require("../services/mouvementStockService");
 const { redis } = require("../redisClient");
@@ -11,14 +12,35 @@ const material = require("../models/material");
 const lieuDetection = require("../models/lieuDetection");
 const getUserRoles = require("../middleware/getUserRoles");
 const { sendEmail, buildTable } = require("../middleware/send_mail");
+const { scheduleDemandeExpiration } = require("../scheduleDemandeExpiration");
+const user_projet = require("../models/user_projet");
 
-const getEmail = async (id) => {
-  const current_user = await userMUS.findByPk(id);
-  if (current_user) {
-    return current_user.email;
-  } else {
-    return "Email not found";
+const getEmail = async (demandeProjet) => {
+  const usersEmails = [];
+
+  const _projet = await projet.findOne({
+    where: { nom: demandeProjet },
+  });
+
+  if (!_projet) return [];
+
+  const usersIds = await user_projet.findAll({
+    where: { projetId: _projet.id },
+  });
+
+  for (const element of usersIds) {
+    const _user = await userMUS.findOne({
+      where: { id: element.userId },
+    });
+
+    if (_user) {
+      usersEmails.push(_user.email);
+    }
   }
+
+  console.log(usersEmails);
+
+  return usersEmails;
 };
 const createDemande = async (req, res) => {
   const { sequence, demandeData, subDemandes = [] } = req.body;
@@ -87,19 +109,22 @@ const createDemande = async (req, res) => {
         { returning: true }
       );
 
-      const email = await getEmail(newDemande.id_userMUS);
+      const emails = await getEmail(newDemande.projetNom.toUpperCase());
 
-      await sendEmail({
-        to: email,
-        subject: `Status demande:  ${newDemande.statusDemande} - ${newDemande.numDemande}`,
-        html: `
-            <h3>Status demande: ${newDemande.statusDemande}</h3>
-            <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
-            <p><b>Status:</b> ${newDemande.statusDemande}</p>
-            <h4>Détails:</h4>
-            ${buildTable(createdSubs)}
-             `,
+      emails.forEach(async (element) => {
+        await sendEmail({
+          to: element.email,
+          subject: `Status demande:  ${newDemande.statusDemande} - ${newDemande.numDemande}`,
+          html: `
+              <h3>Status demande: ${newDemande.statusDemande}</h3>
+              <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
+              <p><b>Status:</b> ${newDemande.statusDemande}</p>
+              <h4>Détails:</h4>
+              ${buildTable(createdSubs)}
+               `,
+        });
       });
+
       return res.status(201).json({
         message:
           "Demande hors stock! Vous pouvez faire une demande PLS avec le numéro",
@@ -137,10 +162,11 @@ const comfirmDemande = async (req, res) => {
 
     await redis.set(`demande:${newDemande.id}`, "pending");
     console.log(`Key demande:${newDemande.id} set (mock, expires in 48h)`);
-
     const expirationTime = Date.now() + 48 * 3600 * 1000;
-    // const expirationTime = Date.now() + 5 * 1000;
+    // const expirationTime = Date.now() + 25 * 1000;
     redis[`expiry:${newDemande.id}`] = expirationTime;
+
+    // await scheduleDemandeExpiration(newDemande.id);
 
     // decrementation
     for (const sub of subDemandes) {
@@ -184,26 +210,25 @@ const comfirmDemande = async (req, res) => {
         sub.statusSubDemande === "Stock limité" ||
         sub.statusSubDemande === "En stock"
     );
-    const email = await getEmail(newDemande.id_userMUS);
-
-    await sendEmail({
-      to: email,
-      subject: `Status demande: ${newDemande.statusDemande} - ${newDemande.numDemande}`,
-      html: `
-      <h3>Status demande: ${newDemande.statusDemande}</h3>
-      <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
-      <p><b>Status:</b> ${newDemande.statusDemande}</p>
-      <h4>Détails:</h4>
-          ${buildTable(subDemandes)}
-    `,
+    const emails = await getEmail(newDemande.projetNom);
+    emails.forEach(async (element) => {
+      await sendEmail({
+        to: element.email,
+        subject: `Status demande:  ${newDemande.statusDemande} - ${newDemande.numDemande}`,
+        html: `
+              <h3>Status demande: ${newDemande.statusDemande}</h3>
+              <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
+              <p><b>Status:</b> ${newDemande.statusDemande}</p>
+              <h4>Détails:</h4>
+              ${buildTable(createdSubs)}
+               `,
+      });
     });
     const hasStockLimite = subDemandes.some(
       (sub) =>
         sub.statusSubDemande === "Hors stock" ||
         sub.statusSubDemande === "Stock limité"
     );
-    console.log("hasProblemSub");
-    console.log(hasStockLimite);
 
     return res.status(201).json({
       message: "Demande initiée avec succès avec numéro",
@@ -314,7 +339,6 @@ const getDemandeById = async (req, res) => {
 const acceptDemandeAgent = async (req, res) => {
   const { nameButton } = req.body;
   const { id } = req.params;
-  console.log("nameButton: ", nameButton);
 
   const fullName = `${req.user.firstName} ${req.user.lastName}`;
   try {
@@ -330,22 +354,13 @@ const acceptDemandeAgent = async (req, res) => {
     let newStatus = demande.statusDemande;
     if (demande.statusDemande === "Demande initiée") {
       newStatus = "Préparation en cours";
-      const email = await getEmail(demande.id_userMUS);
-
-      await sendEmail({
-        to: email,
-        subject: `Status demande : ${newStatus} - ${demande.numDemande}`,
-        html: `
-              <h3>Status demande: ${newStatus}</h3>
-              <p>Numéro de demande: <b>${demande.numDemande}</b></p>
-              <p><b>Status:</b> ${newStatus}</p>
-              <h4>Détails:</h4>
-                  ${buildTable(demande.subDemandeMUS)}
-            `,
-      });
     }
+    // else {
+    //   res.status(400).json({
+    //     message: "Status déja changé!",
+    //   });
+    // }
     if (demande.statusDemande === "Préparation en cours") {
-      // check subDemandes
       const hasProblemSub = demande.subDemandeMUS.some(
         (sub) =>
           sub.statusSubDemande === "Hors stock" ||
@@ -399,11 +414,15 @@ const acceptDemandeAgent = async (req, res) => {
 
           console.log(`Pattern stock mise à jour: ${patternFromDB.quantite}`);
         } else {
-          console.warn(
+          console.log(
             `Pattern introuvable --> gamme=${gammeFromDB.id}, material=${sub.materialPartNumber}, patternNumb=${sub.patternNumb}`
           );
         }
       }
+      res.status(200).json({
+        message: newStatus,
+        data: { id, newStatus },
+      });
     }
     if (
       demande.statusDemande == "Demande initiée" &&
@@ -413,6 +432,20 @@ const acceptDemandeAgent = async (req, res) => {
         { statusDemande: newStatus, accepterPar: fullName },
         { where: { id } }
       );
+      const emails = await getEmail(demande.projetNom);
+      emails.forEach(async (element) => {
+        await sendEmail({
+          to: element.email,
+          subject: `Status demande:  ${demande.statusDemande} - ${demande.numDemande}`,
+          html: `
+              <h3>Status demande: ${demande.statusDemande}</h3>
+              <p>Numéro de demande: <b>${demande.numDemande}</b></p>
+              <p><b>Status:</b> ${demande.statusDemande}</p>
+              <h4>Détails:</h4>
+              ${buildTable(demande.subDemandeMUS)}
+               `,
+        });
+      });
       res.status(200).json({
         message: newStatus,
         data: { id, newStatus },
@@ -421,8 +454,8 @@ const acceptDemandeAgent = async (req, res) => {
       demande.statusDemande == "Préparation en cours" &&
       nameButton == "Accepter"
     ) {
-      res.status(500).json({
-        message: "Status déja changé!",
+      res.status(400).json({
+        message: "Status déja changé 22!",
       });
     }
     if (
@@ -433,6 +466,20 @@ const acceptDemandeAgent = async (req, res) => {
         { statusDemande: newStatus, livreePar: fullName },
         { where: { id } }
       );
+      const emails = await getEmail(demande.projetNom);
+      emails.forEach(async (element) => {
+        await sendEmail({
+          to: element.email,
+          subject: `Status demande:  ${demande.statusDemande} - ${demande.numDemande}`,
+          html: `
+              <h3>Status demande: ${demande.statusDemande}</h3>
+              <p>Numéro de demande: <b>${demande.numDemande}</b></p>
+              <p><b>Status:</b> ${demande.statusDemande}</p>
+              <h4>Détails:</h4>
+              ${buildTable(demande.subDemandeMUS)}
+               `,
+        });
+      });
       res.status(200).json({
         message: newStatus,
         data: { id, newStatus },
@@ -442,8 +489,8 @@ const acceptDemandeAgent = async (req, res) => {
         demande.statusDemande == "Demande partiellement livrée") &&
       nameButton == "Livree"
     ) {
-      res.status(500).json({
-        message: "Status déja changé!",
+      res.status(400).json({
+        message: "Status déja changé 33!",
       });
     }
   } catch (error) {
@@ -506,10 +553,32 @@ const annulerDemandeDemandeur = async (req, res) => {
             { statusDemande: "Demande annulé", annulerPar: fullName },
             { where: { id } }
           );
+          const demande = await demandeMUS.findOne({
+            where: { id },
+            include: [{ model: subDemandeMUS, as: "subDemandeMUS" }],
+          });
+          const emails = await getEmail(demande.projetNom);
+          emails.forEach(async (element) => {
+            await sendEmail({
+              to: element.email,
+              subject: `Status demande:  ${demande.statusDemande} - ${demande.numDemande}`,
+              html: `
+              <h3>Status demande: ${demande.statusDemande}</h3>
+              <p>Numéro de demande: <b>${demande.numDemande}</b></p>
+              <p><b>Status:</b> ${demande.statusDemande}</p>
+              <h4>Détails:</h4>
+              ${buildTable(demande.subDemandeMUS)}
+               `,
+            });
+          });
         }
       }
       return res.status(200).json({
         message: "Demande annulé",
+      });
+    } else {
+      res.status(500).json({
+        message: "Status déja changé!",
       });
     }
   } catch (error) {

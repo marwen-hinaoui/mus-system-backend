@@ -9,7 +9,9 @@ const material = require("./material");
 const gamme = require("./gamme");
 const lieuDetection = require("./lieuDetection");
 const fonction = require("./fonction");
+const projet = require("./projet");
 const user_role_MUS = require("./user_role_MUS");
+const user_projet = require("./user_projet");
 const mouvementStock = require("./mouvementStock");
 
 userMUS.belongsTo(fonction, { foreignKey: "id_fonction", as: "fonction" });
@@ -65,6 +67,20 @@ userMUS.belongsToMany(roleMUS, {
 roleMUS.belongsToMany(userMUS, {
   through: user_role_MUS,
   foreignKey: "roleId",
+  as: "users",
+  otherKey: "userId",
+});
+
+userMUS.belongsToMany(projet, {
+  through: user_projet,
+  foreignKey: "userId",
+  otherKey: "projetId",
+  as: "projets",
+});
+
+projet.belongsToMany(userMUS, {
+  through: user_projet,
+  foreignKey: "projetId",
   as: "users",
   otherKey: "userId",
 });

@@ -1,7 +1,7 @@
 const { getPool } = require("../config/db_plt");
 const getPatternsSQL = require("../middleware/sqlQuery");
 
-const getSequences = async (req, res) => {
+const getPNFromSequences = async (req, res) => {
   const { sequence } = req.params;
 
   try {
@@ -14,7 +14,7 @@ const getSequences = async (req, res) => {
 
     res.json(result.recordset);
   } catch (err) {
-    console.error("Error in getSequences:", err);
+    console.error("Error in getPNFromSequences:", err);
     res.status(500).send("Error fetching sequences");
   }
 };
@@ -36,6 +36,7 @@ const getProjet = async (req, res) => {
     res.status(500).send("Error fetching getProjet");
   }
 };
+
 const getMaterial = async (req, res) => {
   const { cover_pn, panel_number } = req.params;
 
@@ -58,7 +59,6 @@ const getPatterns = async (req, res) => {
 
   try {
     const result = await getPatternsSQL(cover_pn);
-    console.log(result);
 
     return res.json(result.recordset);
   } catch (err) {
@@ -67,4 +67,4 @@ const getPatterns = async (req, res) => {
   }
 };
 
-module.exports = { getSequences, getPatterns, getProjet, getMaterial };
+module.exports = { getPNFromSequences, getPatterns, getProjet, getMaterial };

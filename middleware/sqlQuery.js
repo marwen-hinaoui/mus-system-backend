@@ -6,7 +6,7 @@ const getPatternsSQL = async (cover_pn) => {
   const result = await pool
     .request()
     .query(
-      `SELECT [panel_number] FROM  [plt_viewer].[dbo].[files] WHERE [part_number_cover] = '${cover_pn}'`
+      `SELECT [panel_number], [quantity], [pattern] FROM  [plt_viewer].[dbo].[files] WHERE [part_number_cover] = '${cover_pn}'`
     );
 
   return result;

@@ -8,6 +8,8 @@ const site = require("../models/site");
 const fonction = require("../models/fonction");
 const { Sequelize, Op } = require("sequelize");
 const { transporter, mailOptions } = require("../middleware/send_mail");
+const projet = require("../models/projet");
+const user_projet = require("../models/user_projet");
 const blacklistedRefreshTokens = new Set();
 require("dotenv").config();
 
@@ -35,7 +37,7 @@ const login = async (req, res) => {
     } else if (
       roleList.includes("DEMANDEUR") ||
       roleList.includes("AGENT_MUS") ||
-      roleList.includes("GESTIONNEUR_STOCK")
+      roleList.includes("GESTIONNAIRE_STOCK")
     ) {
       redirect = "/user";
     }
@@ -109,11 +111,22 @@ const signUp = async (req, res) => {
         roleId: findRoleMUS.id,
       });
     }
+    for (const p of req.body.id_projet) {
+      const findProjet = await projet.findOne({
+        where: {
+          id: p,
+        },
+      });
+
+      await user_projet.create({
+        userId: user_create.id,
+        projetId: findProjet.id,
+      });
+    }
 
     return res.status(201).json({
       id: user_create.id,
       username: user_create.username,
-
       site: user_create.id_site,
     });
   } catch (error) {
@@ -176,6 +189,7 @@ const logout = (req, res) => {
       httpOnly: true,
       secure: true,
       sameSite: "None",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
   }
   return res.status(200).json({ message: "Déconnecté, token blacklisté" });
@@ -183,7 +197,6 @@ const logout = (req, res) => {
 
 const getUsers = async (req, res) => {
   let authenticatedUserId = req.user.id;
-  console.log(req.user);
 
   try {
     const getUsersFromDB = await userMUS.findAll({
@@ -210,6 +223,12 @@ const getUsers = async (req, res) => {
         { model: site, attributes: [], as: "site" },
         { model: fonction, attributes: [], as: "fonction" },
         {
+          model: projet,
+          as: "projets",
+          through: { attributes: [] },
+          attributes: ["nom"],
+        },
+        {
           model: roleMUS,
           as: "roles",
           through: { attributes: [] },
@@ -220,9 +239,11 @@ const getUsers = async (req, res) => {
     });
     const formattedUsers = getUsersFromDB.map((user) => {
       const roles = user.roles.map((role) => role.name);
+      const projets = user.projets.map((projet) => projet.nom);
       return {
         ...user.toJSON(),
         roleList: roles,
+        projetList: projets,
       };
     });
     return res.status(200).json({

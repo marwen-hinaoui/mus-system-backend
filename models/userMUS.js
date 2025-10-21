@@ -13,6 +13,7 @@ const userMUS = sequelize.define(
     password: { type: DataTypes.STRING, allowNull: false },
     id_site: { type: DataTypes.INTEGER, allowNull: false },
     id_fonction: { type: DataTypes.INTEGER, allowNull: false },
+    matricule: { type: DataTypes.STRING, allowNull: false },
   },
   {
     tableName: "userMUS",
