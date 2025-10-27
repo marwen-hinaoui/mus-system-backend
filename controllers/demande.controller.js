@@ -12,7 +12,7 @@ const material = require("../models/material");
 const lieuDetection = require("../models/lieuDetection");
 const getUserRoles = require("../middleware/getUserRoles");
 const { sendEmail, buildTable } = require("../middleware/send_mail");
-const { scheduleDemandeExpiration } = require("../scheduleDemandeExpiration");
+// const { scheduleDemandeExpiration } = require("../scheduleDemandeExpiration");
 const user_projet = require("../models/user_projet");
 
 const getEmail = async (demandeProjet) => {
@@ -204,7 +204,7 @@ const comfirmDemande = async (req, res) => {
       await redis.set(`demande:${newDemande.id}`, "pending");
       console.log(`Key demande:${newDemande.id} set (mock, expires in 48h)`);
       const expirationTime = Date.now() + 48 * 3600 * 1000;
-      // const expirationTime = Date.now() + 25 * 1000;
+      // const expirationTime = Date.now() + 10 * 1000;
       redis[`expiry:${newDemande.id}`] = expirationTime;
 
       // await scheduleDemandeExpiration(newDemande.id);
@@ -449,6 +449,8 @@ const acceptDemandeAgent = async (req, res) => {
         { statusDemande: newStatus, accepterPar: fullName },
         { where: { id } }
       );
+      // delete redis[`expiry:${demande.id}`];
+
       const emails = await getEmail(demande.projetNom);
       emails.forEach(async (element) => {
         await sendEmail({
