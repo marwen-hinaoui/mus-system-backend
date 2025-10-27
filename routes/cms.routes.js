@@ -5,6 +5,7 @@ const {
   getPatterns,
   getProjet,
   getMaterial,
+  getHpglCode,
 } = require("../controllers/cms.controller");
 const verifyTokenAndRole = require("../middleware/verifyTokenAndRole");
 
@@ -27,6 +28,11 @@ router.get(
   "/material/:cover_pn/:panel_number",
   verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   getMaterial
+);
+router.get(
+  "/image/:patternPN",
+  // verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
+  getHpglCode
 );
 
 module.exports = router;

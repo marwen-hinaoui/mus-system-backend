@@ -147,7 +147,7 @@ const createDemande = async (req, res) => {
 
 const comfirmDemande = async (req, res) => {
   const { decision, demandeData, subDemandes } = req.body;
-
+  var inc = 0;
   try {
     if (decision !== "accept") {
       return res.status(200).json({
@@ -155,92 +155,109 @@ const comfirmDemande = async (req, res) => {
       });
     }
 
-    const newDemande = await demandeMUS.create({
-      ...demandeData,
-      statusDemande: "Demande initiée",
-    });
-
-    await redis.set(`demande:${newDemande.id}`, "pending");
-    console.log(`Key demande:${newDemande.id} set (mock, expires in 48h)`);
-    const expirationTime = Date.now() + 48 * 3600 * 1000;
-    // const expirationTime = Date.now() + 25 * 1000;
-    redis[`expiry:${newDemande.id}`] = expirationTime;
-
-    // await scheduleDemandeExpiration(newDemande.id);
-
     // decrementation
+
     for (const sub of subDemandes) {
       const gammeFromDB = await gamme.findOne({
         where: { partNumber: sub.partNumber },
       });
+
+      const patternFromDBTest = await pattern.findAll({
+        where: {
+          quantite: 0,
+          id_gamme: gammeFromDB.id,
+        },
+      });
+      if (patternFromDBTest.length > 0) {
+        inc++;
+      }
       const materialFromDB = await material.findOne({
         where: { partNumberMaterial: sub.materialPartNumber },
       });
 
       if (!gammeFromDB || !materialFromDB) continue;
 
-      const patternFromDB = await pattern.findOne({
-        where: {
-          id_gamme: gammeFromDB.id,
-          patternNumb: sub.patternNumb,
-          id_material: materialFromDB.id,
-        },
-      });
+      if (patternFromDBTest.length === 0) {
+        const patternFromDB = await pattern.findOne({
+          where: {
+            id_gamme: gammeFromDB.id,
+            patternNumb: sub.patternNumb,
+            id_material: materialFromDB.id,
+          },
+        });
 
-      if (patternFromDB) {
-        let delivered = Math.min(sub.quantite, patternFromDB.quantite);
+        if (patternFromDB) {
+          let delivered = Math.min(sub.quantite, patternFromDB.quantite);
 
-        patternFromDB.quantite -= delivered;
-        if (patternFromDB.quantite < 0) patternFromDB.quantite = 0;
-        await patternFromDB.save();
+          patternFromDB.quantite -= delivered;
+          if (patternFromDB.quantite < 0) patternFromDB.quantite = 0;
+          await patternFromDB.save();
+        }
       }
     }
+    if (inc === 0) {
+      const newDemande = await demandeMUS.create({
+        ...demandeData,
+        statusDemande: "Demande initiée",
+      });
 
-    const createdSubs = await subDemandeMUS.bulkCreate(
-      subDemandes.map((sub, idx) => ({
-        ...sub,
-        id_demandeMUS: newDemande.id,
-        numSubDemande: `${newDemande.numDemande}-${idx + 1}`,
-      })),
-      { returning: true }
-    );
+      await redis.set(`demande:${newDemande.id}`, "pending");
+      console.log(`Key demande:${newDemande.id} set (mock, expires in 48h)`);
+      const expirationTime = Date.now() + 48 * 3600 * 1000;
+      // const expirationTime = Date.now() + 25 * 1000;
+      redis[`expiry:${newDemande.id}`] = expirationTime;
 
-    const demandeDetailsAfterAcceptation = subDemandes.filter(
-      (sub) =>
-        sub.statusSubDemande === "Stock limité" ||
-        sub.statusSubDemande === "En stock"
-    );
-    const emails = await getEmail(newDemande.projetNom);
-    emails.forEach(async (element) => {
-      await sendEmail({
-        to: element.email,
-        subject: `Status demande:  ${newDemande.statusDemande} - ${newDemande.numDemande}`,
-        html: `
+      // await scheduleDemandeExpiration(newDemande.id);
+      const createdSubs = await subDemandeMUS.bulkCreate(
+        subDemandes.map((sub, idx) => ({
+          ...sub,
+          id_demandeMUS: newDemande.id,
+          numSubDemande: `${newDemande.numDemande}-${idx + 1}`,
+        })),
+        { returning: true }
+      );
+
+      const demandeDetailsAfterAcceptation = subDemandes.filter(
+        (sub) =>
+          sub.statusSubDemande === "Stock limité" ||
+          sub.statusSubDemande === "En stock"
+      );
+      const emails = await getEmail(newDemande.projetNom);
+      emails.forEach(async (element) => {
+        await sendEmail({
+          to: element.email,
+          subject: `Status demande:  ${newDemande.statusDemande} - ${newDemande.numDemande}`,
+          html: `
               <h3>Status demande: ${newDemande.statusDemande}</h3>
               <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
               <p><b>Status:</b> ${newDemande.statusDemande}</p>
               <h4>Détails:</h4>
               ${buildTable(createdSubs)}
                `,
+        });
       });
-    });
-    const hasStockLimite = subDemandes.some(
-      (sub) =>
-        sub.statusSubDemande === "Hors stock" ||
-        sub.statusSubDemande === "Stock limité"
-    );
+      const hasStockLimite = subDemandes.some(
+        (sub) =>
+          sub.statusSubDemande === "Hors stock" ||
+          sub.statusSubDemande === "Stock limité"
+      );
 
-    return res.status(201).json({
-      message: "Demande initiée avec succès avec numéro",
-      numeroDemande: newDemande.numDemande,
+      res.status(201).json({
+        message: "Demande initiée avec succès avec numéro",
+        numeroDemande: newDemande.numDemande,
 
-      data: {
-        hasStockLimite: hasStockLimite,
-        demande: newDemande,
-        subDemandes: createdSubs,
-        demandeDetailsAfterAcceptation,
-      },
-    });
+        data: {
+          hasStockLimite: hasStockLimite,
+          demande: newDemande,
+          subDemandes: createdSubs,
+          demandeDetailsAfterAcceptation,
+        },
+      });
+    } else {
+      res.status(400).json({
+        message: "Erreur creation demande!",
+      });
+    }
   } catch (error) {
     console.error(error);
     return res.status(500).json({

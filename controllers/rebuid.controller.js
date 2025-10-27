@@ -107,31 +107,51 @@ const rebuildChangeStatus = async (req, res) => {
       });
       const patternData = await getPatternsSQL(gammeFromDB.partNumber);
 
-      patternData.recordset.map(async (item) => {
-        const patternItem = await pattern.findOne({
-          where: {
-            patternNumb: item.panel_number,
-            id_gamme: gammeFromDB.id,
-          },
+      const patternItemTest = await pattern.findAll({
+        where: {
+          quantite: 0,
+          id_gamme: gammeFromDB.id,
+        },
+      });
+
+      console.log("------------ QTE === 0 -------------");
+      console.log(patternItemTest);
+
+      if (patternItemTest.length === 0) {
+        patternData.recordset.map(async (item) => {
+          const patternItem = await pattern.findOne({
+            where: {
+              patternNumb: item.panel_number,
+              id_gamme: gammeFromDB.id,
+            },
+          });
+
+          console.log("-----------------------PATTERN----------------------");
+          console.log(patternItem.patternNumb);
+
+          if (patternItem?.quantite > 0) {
+            await patternItem.decrement("quantite", {
+              by: data.qteRequest * item.quantity,
+            });
+          }
         });
 
-        if (patternItem) {
-          const res = await patternItem.decrement("quantite", {
-            by: data.qteRequest * item.quantity,
-          });
-        }
-      });
-      let projet = await getProjetService(gammeFromDB.partNumber);
+        let projet = await getProjetService(gammeFromDB.partNumber);
+        await rebuild.create({
+          pn: data.pn,
+          qte: data.qteRequest,
+          status_rebuild: data.statusRebuild,
+          projet,
+        });
 
-      await rebuild.create({
-        pn: data.pn,
-        qte: data.qteRequest,
-        status_rebuild: data.statusRebuild,
-        projet,
-      });
-      res.status(201).json({
-        message: "Préparation en cours",
-      });
+        res.status(201).json({
+          message: "Préparation en cours",
+        });
+      } else {
+        res.status(400).json({
+          message: "Erreur changement status: une demande deja initié",
+        });
+      }
     }
     if (data.statusRebuild === "Livrée") {
       await rebuild.update(

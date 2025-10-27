@@ -1,13 +1,12 @@
-const { Op } = require("sequelize");
 const demandeMUS = require("./models/demandeMUS");
 const { redis } = require("./redisClient");
 
 const timers = new Map();
 // async function scheduleDemandeExpiration(demandeId, delayMs = 48 * 3600 * 1000) {
-async function scheduleDemandeExpiration(demandeId, delayMs = 5 * 1000) {
+async function scheduleDemandeExpiration(demandeId, delayMs = 60 * 1000) {
   if (timers.has(demandeId)) clearTimeout(timers.get(demandeId));
 
-  const timer = setTimeout(async () => {
+  const timer = setInterval(async () => {
     const demande = await demandeMUS.findOne({ where: { id: demandeId } });
     if (!demande || demande.statusDemande !== "Demande initiée") return;
 
@@ -39,8 +38,8 @@ async function restoreTimersOnStartup() {
   for (const d of demandes) {
     const createdAt = new Date(`${d.date_creation}T${d.heure}`);
 
-    const expireAt = createdAt.getTime() + 48 * 3600 * 1000;
-    // const expireAt = createdAt.getTime() + 25 * 1000;
+    // const expireAt = createdAt.getTime() + 48 * 3600 * 1000;
+    const expireAt = createdAt.getTime() + 5 * 1000;
 
     const now = Date.now();
     const remaining = expireAt - now;

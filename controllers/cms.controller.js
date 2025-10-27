@@ -1,3 +1,5 @@
+const path = require("path");
+const fs = require("fs");
 const { getPool } = require("../config/db_plt");
 const getPatternsSQL = require("../middleware/sqlQuery");
 
@@ -67,4 +69,45 @@ const getPatterns = async (req, res) => {
   }
 };
 
-module.exports = { getPNFromSequences, getPatterns, getProjet, getMaterial };
+// const getPatternsPN = async (req, res) => {
+//   const { cover_pn, panel_number } = req.params;
+
+//   try {
+//     const result = await getPatternsSQL.getPatternsPNSQL(
+//       cover_pn,
+//       panel_number
+//     );
+
+//     return res.json(result.recordset);
+//   } catch (err) {
+//     console.error("Error in getPartNumbers:", err);
+//     res.status(500).send("Error fetching getPartNumbers");
+//   }
+// };
+
+const getHpglCode = (req, res) => {
+  const { patternPN } = req.params;
+  const basePath = "G:/Eng/Table de coupe/PLT files_CTC";
+  const filePath = path.join(basePath, `${patternPN}.plt`);
+
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "Fichier non trouvé" });
+  }
+
+  try {
+    const hpglCode = fs.readFileSync(filePath, "utf8");
+    res.json({ hpglCode });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Erreur lors de la lecture du fichier" });
+  }
+};
+
+module.exports = {
+  getPNFromSequences,
+  getPatterns,
+  getProjet,
+  getMaterial,
+  // getPatternsPN,
+  getHpglCode,
+};
