@@ -1,0 +1,542 @@
+{
+  "DefautCMS": [
+    {
+      "code_defaut": "A001",
+      "typeDefaut": "Nombre de Point d'arrêt NOK"
+    },
+    {
+      "code_defaut": "A002",
+      "typeDefaut": "Manque point d'arrêt"
+    },
+    {
+      "code_defaut": "A003",
+      "typeDefaut": "Code à barre illisible"
+    },
+    {
+      "code_defaut": "A004",
+      "typeDefaut": "Couture ouverte non respecté fermée papillon"
+    },
+    {
+      "code_defaut": "A007",
+      "typeDefaut": "Surpiquage sample irrégulière"
+    },
+    {
+      "code_defaut": "A008",
+      "typeDefaut": "Manque surpiquage sample"
+    },
+    {
+      "code_defaut": "A009",
+      "typeDefaut": "Couleur de fil de surpiquage sample incorrect"
+    },
+    {
+      "code_defaut": "A014",
+      "typeDefaut": "Manque élastique"
+    },
+    {
+      "code_defaut": "A019",
+      "typeDefaut": "Broderie défectueux"
+    },
+    {
+      "code_defaut": "A020",
+      "typeDefaut": "Position de broderie NOK"
+    },
+    {
+      "code_defaut": "A021",
+      "typeDefaut": "Manque Broderie"
+    },
+    {
+      "code_defaut": "A026",
+      "typeDefaut": "Surpiquage double large talon de surpiquage nok"
+    },
+    {
+      "code_defaut": "A027",
+      "typeDefaut": "Surpiquage double irrégulière"
+    },
+    {
+      "code_defaut": "A028",
+      "typeDefaut": "Manque Surpiquage double"
+    },
+    {
+      "code_defaut": "A029",
+      "typeDefaut": "Couleur de fil de surpiquage double incorrect"
+    },
+    {
+      "code_defaut": "A032",
+      "typeDefaut": "Manque ourlet"
+    },
+    {
+      "code_defaut": "A033",
+      "typeDefaut": "Etiquette de traçabilité incorrecte"
+    },
+    {
+      "code_defaut": "A035",
+      "typeDefaut": "Position d'étiquette NOK"
+    },
+    {
+      "code_defaut": "A037",
+      "typeDefaut": "Empiècement inversé"
+    },
+    {
+      "code_defaut": "A038",
+      "typeDefaut": "Empiècement plié Fold / Pliage"
+    },
+    {
+      "code_defaut": "A039",
+      "typeDefaut": "Empiècement Coupé CISEAUX"
+    },
+    {
+      "code_defaut": "A054",
+      "typeDefaut": "Empiècement endommagé"
+    },
+    { "code_defaut": "A055", "typeDefaut": "Mélangé ID" },
+    {
+      "code_defaut": "A058",
+      "typeDefaut": "Élément pris en couture"
+    },
+    {
+      "code_defaut": "A059",
+      "typeDefaut": "Empiècement incliner (ondulé) avec biais"
+    },
+    {
+      "code_defaut": "A063",
+      "typeDefaut": "Trous d'aiguille"
+    },
+    {
+      "code_defaut": "A064",
+      "typeDefaut": "Aiguille dans la coiffe"
+    },
+    {
+      "code_defaut": "A065",
+      "typeDefaut": "Cran miss match décalage des crans"
+    },
+    {
+      "code_defaut": "A066",
+      "typeDefaut": "Manque rappel poutre"
+    },
+    {
+      "code_defaut": "A067",
+      "typeDefaut": "Rappel poutre inversé"
+    },
+    {
+      "code_defaut": "A069",
+      "typeDefaut": "Manque opération"
+    },
+    {
+      "code_defaut": "A070",
+      "typeDefaut": "Composant incorrect"
+    },
+    {
+      "code_defaut": "A072",
+      "typeDefaut": "Empiècement INCORRECT"
+    },
+    {
+      "code_defaut": "A073",
+      "typeDefaut": "Perforation visible"
+    },
+    { "code_defaut": "A074", "typeDefaut": "Embu" },
+    {
+      "code_defaut": "A075",
+      "typeDefaut": "Manque Profil avec J forme"
+    },
+    {
+      "code_defaut": "A076",
+      "typeDefaut": "Manque Profil normal forme"
+    },
+    {
+      "code_defaut": "A077",
+      "typeDefaut": "Profil inversé normal forme"
+    },
+    {
+      "code_defaut": "A078",
+      "typeDefaut": "Profil mal orienté avec J forme"
+    },
+    {
+      "code_defaut": "A080",
+      "typeDefaut": "Couture incomplète"
+    },
+    {
+      "code_defaut": "A081",
+      "typeDefaut": "Talon de couture nok étroite"
+    },
+    {
+      "code_defaut": "A082",
+      "typeDefaut": "Couture irrégulière Rectitude"
+    },
+    {
+      "code_defaut": "A083",
+      "typeDefaut": "Couture visible"
+    },
+    {
+      "code_defaut": "A084",
+      "typeDefaut": "Talon de couture nok large"
+    },
+    {
+      "code_defaut": "A087",
+      "typeDefaut": "Point Cassée"
+    },
+    {
+      "code_defaut": "A089",
+      "typeDefaut": "Point de couture large N de point/cm nok"
+    },
+    {
+      "code_defaut": "A090",
+      "typeDefaut": "Point de couture Courte N de point/cm nok"
+    },
+    { "code_defaut": "A091", "typeDefaut": "Point sauté" },
+    {
+      "code_defaut": "A092",
+      "typeDefaut": "Tension NOK lâché"
+    },
+    {
+      "code_defaut": "A093",
+      "typeDefaut": "Tension NOK serré"
+    },
+    {
+      "code_defaut": "A094",
+      "typeDefaut": "Mauvaise épaisseur de fil fil non calibré"
+    },
+    {
+      "code_defaut": "A095",
+      "typeDefaut": "Couleur de fil"
+    },
+    {
+      "code_defaut": "A096",
+      "typeDefaut": "Fil endommagé"
+    },
+    {
+      "code_defaut": "A097",
+      "typeDefaut": "fil suspendu (non coupé)"
+    },
+    {
+      "code_defaut": "A098",
+      "typeDefaut": "Manque Velcro"
+    },
+    {
+      "code_defaut": "A102",
+      "typeDefaut": "Velcro mal orienté / positionné"
+    },
+    {
+      "code_defaut": "A103",
+      "typeDefaut": "PIPPING Lâché LIBRE"
+    },
+    {
+      "code_defaut": "A104",
+      "typeDefaut": "PIPPING ONDULÉ irrégulier"
+    },
+    {
+      "code_defaut": "A105",
+      "typeDefaut": "Rides couture"
+    },
+    {
+      "code_defaut": "A106",
+      "typeDefaut": "Manque les arrêts de fermeture éclair (zipper)"
+    },
+    {
+      "code_defaut": "A107",
+      "typeDefaut": "Manque bonde de fermeture éclair (zipper)"
+    },
+    {
+      "code_defaut": "A108",
+      "typeDefaut": "Manque curseur de fermeture éclair (zipper)"
+    },
+    {
+      "code_defaut": "A109",
+      "typeDefaut": "Manque ID de Quantité"
+    },
+    {
+      "code_defaut": "A111",
+      "typeDefaut": "Alignement de bord à bord décalage"
+    },
+    {
+      "code_defaut": "A112",
+      "typeDefaut": "Mauvaise retouche"
+    },
+    {
+      "code_defaut": "A114",
+      "typeDefaut": "toile de debut de couture apparu"
+    },
+    {
+      "code_defaut": "A117",
+      "typeDefaut": "Fermeture éclair (Zip) mal orienté"
+    },
+    {
+      "code_defaut": "A121",
+      "typeDefaut": "Manque piqûre"
+    },
+    {
+      "code_defaut": "A122",
+      "typeDefaut": "Largeur d'ourlet"
+    },
+    {
+      "code_defaut": "A123",
+      "typeDefaut": "Couture déchirer (décousu)"
+    },
+    {
+      "code_defaut": "A124",
+      "typeDefaut": "Trou visible sur la couture surpiquage simple/double"
+    },
+    {
+      "code_defaut": "A125",
+      "typeDefaut": "Tension NOK (lâcher) surpiquage simple/double"
+    },
+    {
+      "code_defaut": "A126",
+      "typeDefaut": "Couture surpiquage simple/double non pas ce métrique"
+    },
+    {
+      "code_defaut": "A127",
+      "typeDefaut": "Largeur de couture surjet NOK"
+    },
+    {
+      "code_defaut": "A128",
+      "typeDefaut": "Pré couture NOK"
+    },
+    {
+      "code_defaut": "A129",
+      "typeDefaut": "Fronçage nok"
+    },
+    {
+      "code_defaut": "A130",
+      "typeDefaut": "Aspect de poche Nok"
+    },
+    {
+      "code_defaut": "A132",
+      "typeDefaut": "Fermeture éclair (Zip) inversé"
+    },
+    {
+      "code_defaut": "A133",
+      "typeDefaut": "Couture décousu"
+    },
+    { "code_defaut": "A135", "typeDefaut": "Autres" },
+    {
+      "code_defaut": "A136",
+      "typeDefaut": "Manque cacheté"
+    },
+    {
+      "code_defaut": "A137",
+      "typeDefaut": "Point d'arrêt ouvert"
+    },
+    {
+      "code_defaut": "A138",
+      "typeDefaut": "Position de la couture décorative NOK"
+    },
+    {
+      "code_defaut": "A139",
+      "typeDefaut": "Position de code à barre d'étiquette NOK"
+    },
+    {
+      "code_defaut": "A140",
+      "typeDefaut": "Fermeture éclair (Zip) attrapé par la couture"
+    },
+
+    {
+      "code_defaut": "C001",
+      "typeDefaut": "Tension d'airbag lâché"
+    },
+    {
+      "code_defaut": "C002",
+      "typeDefaut": "Tension d'airbag serré"
+    },
+    {
+      "code_defaut": "C003",
+      "typeDefaut": "Code à bar de etiquette d'airbag endommagé"
+    },
+    {
+      "code_defaut": "C004",
+      "typeDefaut": "Largeur du talon de couture AIRBAG"
+    },
+    {
+      "code_defaut": "C005",
+      "typeDefaut": "ISOFIX Pelé M9achar"
+    },
+    {
+      "code_defaut": "C006",
+      "typeDefaut": "Etiquette ISOFIX endommagé"
+    },
+    {
+      "code_defaut": "C007",
+      "typeDefaut": "Isofix Couleur/taille"
+    },
+    {
+      "code_defaut": "C008",
+      "typeDefaut": "Manque point d'arrêt A/B"
+    },
+    {
+      "code_defaut": "C009",
+      "typeDefaut": "Longueur et nbre du point d'arrêt A/B"
+    },
+    {
+      "code_defaut": "C010",
+      "typeDefaut": "Point Cassée A/B"
+    },
+    {
+      "code_defaut": "C011",
+      "typeDefaut": "Couture incomplète A/B"
+    },
+    {
+      "code_defaut": "C012",
+      "typeDefaut": "Point sauté A/B"
+    },
+    {
+      "code_defaut": "C013",
+      "typeDefaut": "Code à barre d'étiquette A/B illisible"
+    },
+
+    {
+      "code_defaut": "CC01",
+      "typeDefaut": "INFLAMMABILITÉ NOK test(CC01)"
+    },
+    {
+      "code_defaut": "CC02",
+      "typeDefaut": "MANQUE ETIQUETTE ISOFIX (CC02)"
+    },
+    {
+      "code_defaut": "CC03",
+      "typeDefaut": "Position ETIQUETTE ISOFIX NOK (CC02)"
+    },
+    {
+      "code_defaut": "CC04",
+      "typeDefaut": "MANQUE Top Tether (CC02)"
+    },
+    {
+      "code_defaut": "CC05",
+      "typeDefaut": "Position Top Tether NOK (CC02)"
+    },
+    {
+      "code_defaut": "CC06",
+      "typeDefaut": "Longueur des points entre Tab-Tab A/B (CC03)"
+    },
+    {
+      "code_defaut": "CC07",
+      "typeDefaut": "Nombre des points entre Tab-Tab A/B (CC03)"
+    },
+    {
+      "code_defaut": "CC08",
+      "typeDefaut": "Manque ETIQUETTE A/B (CC03)"
+    },
+    {
+      "code_defaut": "CC09",
+      "typeDefaut": "ETIQUETTE A/B incorrect (CC03)"
+    },
+    {
+      "code_defaut": "CC10",
+      "typeDefaut": "Rework de la couture A/B - zone de déploiement (CC04)"
+    },
+    {
+      "code_defaut": "CC11",
+      "typeDefaut": "Rework de la couture A/B - 75 mm de la zone de déploiement (CC04)"
+    },
+    {
+      "code_defaut": "CC12",
+      "typeDefaut": "Rework SAC A/B sur la pré-couture (CC04)"
+    },
+    {
+      "code_defaut": "CC13",
+      "typeDefaut": "Couture A / B obstruée/fermée par couture décorative simple et double (CC05)"
+    },
+    {
+      "code_defaut": "CC14",
+      "typeDefaut": "Couture A / B obstruée/fermée par Etiquette A/B (CC05)"
+    },
+    {
+      "code_defaut": "CC15",
+      "typeDefaut": "Couture A / B obstruée par NON-PERF TAPE (CC05)"
+    },
+    {
+      "code_defaut": "CC16",
+      "typeDefaut": "Calibre de fil A / B - HAUT (CC06)"
+    },
+    {
+      "code_defaut": "CC17",
+      "typeDefaut": "Calibre de fil A / B - BAS (CC06)"
+    },
+    {
+      "code_defaut": "CC18",
+      "typeDefaut": "Calibre de fil de SAC/Toile A / B  (CC07)"
+    },
+    {
+      "code_defaut": "CC19",
+      "typeDefaut": "Calibre de fil de profilé A / B  (CC07)"
+    },
+    {
+      "code_defaut": "CC20",
+      "typeDefaut": "SAC SPI A/B (CC07)"
+    },
+    {
+      "code_defaut": "CC21",
+      "typeDefaut": "Profilé SPI A/B (CC07)"
+    },
+    {
+      "code_defaut": "CC22",
+      "typeDefaut": "Nombre des points de point d'arrêt de SAC A/B (CC07)"
+    },
+    {
+      "code_defaut": "CC23",
+      "typeDefaut": "Nombre des points de point d'arrêt de profilé A/B (CC07)"
+    },
+    {
+      "code_defaut": "CC24",
+      "typeDefaut": "Déplacement TAG/LOGO A/B (CC08)"
+    },
+    {
+      "code_defaut": "CC25",
+      "typeDefaut": "Orientation TAG/LOGO A/B (CC08)"
+    },
+    {
+      "code_defaut": "CC26",
+      "typeDefaut": "Étiquette A / B / LOGO plié n mauvaise coté (CC08)"
+    },
+    {
+      "code_defaut": "CC27",
+      "typeDefaut": "Orientation de coupe du SAC A/B (CC09)"
+    },
+    {
+      "code_defaut": "CC28",
+      "typeDefaut": "Patronage  de chute A/B INCORRECT"
+    },
+    {
+      "code_defaut": "CC29",
+      "typeDefaut": "Position de cran du SAC A/B (CC09)"
+    },
+    {
+      "code_defaut": "CC30",
+      "typeDefaut": "SAC A/B incorrect (CC09)"
+    },
+    {
+      "code_defaut": "CC31",
+      "typeDefaut": "Orientation du SAC A/B (CC09)"
+    },
+    {
+      "code_defaut": "CC32",
+      "typeDefaut": "Position du SAC A/B (CC09)"
+    },
+    {
+      "code_defaut": "CC33",
+      "typeDefaut": "Matériel incorrect du SAC A/B (CC09)"
+    },
+    {
+      "code_defaut": "CC34",
+      "typeDefaut": "Profilé incorrect A/B (CC07)"
+    },
+    {
+      "code_defaut": "CC35",
+      "typeDefaut": "Proé ECER17, ECER21 A/B (CC10)"
+    },
+    {
+      "code_defaut": "CC36",
+      "typeDefaut": "Manque profilé A/B (CC10)"
+    },
+    {
+      "code_defaut": "SC01",
+      "typeDefaut": "Manque étiquette de traçabilité (SC01)"
+    },
+    {
+      "code_defaut": "SC02",
+      "typeDefaut": "Orientation d'ISOFIX (SC02)"
+    },
+    {
+      "code_defaut": "SC03",
+      "typeDefaut": "Orientation Top Tether (SC02)"
+    }
+  ]
+}

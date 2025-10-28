@@ -111,9 +111,10 @@ const createDemande = async (req, res) => {
 
       const emails = await getEmail(newDemande.projetNom.toUpperCase());
 
-      emails.forEach(async (element) => {
+      for (let index = 0; index < emails.length; index++) {
+        const element = emails[index];
         await sendEmail({
-          to: element.email,
+          to: element,
           subject: `Status demande:  ${newDemande.statusDemande} - ${newDemande.numDemande}`,
           html: `
               <h3>Status demande: ${newDemande.statusDemande}</h3>
@@ -123,7 +124,7 @@ const createDemande = async (req, res) => {
               ${buildTable(createdSubs)}
                `,
         });
-      });
+      }
 
       return res.status(201).json({
         message:
@@ -223,9 +224,11 @@ const comfirmDemande = async (req, res) => {
           sub.statusSubDemande === "En stock"
       );
       const emails = await getEmail(newDemande.projetNom);
-      emails.forEach(async (element) => {
+
+      for (let index = 0; index < emails.length; index++) {
+        const element = emails[index];
         await sendEmail({
-          to: element.email,
+          to: element,
           subject: `Status demande:  ${newDemande.statusDemande} - ${newDemande.numDemande}`,
           html: `
               <h3>Status demande: ${newDemande.statusDemande}</h3>
@@ -235,7 +238,7 @@ const comfirmDemande = async (req, res) => {
               ${buildTable(createdSubs)}
                `,
         });
-      });
+      }
       const hasStockLimite = subDemandes.some(
         (sub) =>
           sub.statusSubDemande === "Hors stock" ||
@@ -452,9 +455,10 @@ const acceptDemandeAgent = async (req, res) => {
       // delete redis[`expiry:${demande.id}`];
 
       const emails = await getEmail(demande.projetNom);
-      emails.forEach(async (element) => {
+      for (let index = 0; index < emails.length; index++) {
+        const element = emails[index];
         await sendEmail({
-          to: element.email,
+          to: element,
           subject: `Status demande:  ${demande.statusDemande} - ${demande.numDemande}`,
           html: `
               <h3>Status demande: ${demande.statusDemande}</h3>
@@ -464,7 +468,7 @@ const acceptDemandeAgent = async (req, res) => {
               ${buildTable(demande.subDemandeMUS)}
                `,
         });
-      });
+      }
       res.status(200).json({
         message: newStatus,
         data: { id, newStatus },
@@ -486,9 +490,10 @@ const acceptDemandeAgent = async (req, res) => {
         { where: { id } }
       );
       const emails = await getEmail(demande.projetNom);
-      emails.forEach(async (element) => {
+      for (let index = 0; index < emails.length; index++) {
+        const element = emails[index];
         await sendEmail({
-          to: element.email,
+          to: element,
           subject: `Status demande:  ${demande.statusDemande} - ${demande.numDemande}`,
           html: `
               <h3>Status demande: ${demande.statusDemande}</h3>
@@ -498,7 +503,7 @@ const acceptDemandeAgent = async (req, res) => {
               ${buildTable(demande.subDemandeMUS)}
                `,
         });
-      });
+      }
       res.status(200).json({
         message: newStatus,
         data: { id, newStatus },
@@ -577,9 +582,10 @@ const annulerDemandeDemandeur = async (req, res) => {
             include: [{ model: subDemandeMUS, as: "subDemandeMUS" }],
           });
           const emails = await getEmail(demande.projetNom);
-          emails.forEach(async (element) => {
+          for (let index = 0; index < emails.length; index++) {
+            const element = emails[index];
             await sendEmail({
-              to: element.email,
+              to: element,
               subject: `Status demande:  ${demande.statusDemande} - ${demande.numDemande}`,
               html: `
               <h3>Status demande: ${demande.statusDemande}</h3>
@@ -589,7 +595,7 @@ const annulerDemandeDemandeur = async (req, res) => {
               ${buildTable(demande.subDemandeMUS)}
                `,
             });
-          });
+          }
         }
       }
       return res.status(200).json({
