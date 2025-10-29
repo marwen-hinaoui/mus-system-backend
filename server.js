@@ -36,12 +36,12 @@ app.use("/api/rebuild", require("./routes/rebuild.routes"));
 require("./services/demandeExpirationService");
 
 // ====== SERVE REACT BUILD ======
-// const buildPath = path.join(__dirname, "./build");
-// app.use(express.static(buildPath));
+const buildPath = path.join(__dirname, "./build");
+app.use(express.static(buildPath));
 
-// app.all("/{*any}", (req, res) => {
-//   res.sendFile(path.join(buildPath, "index.html"));
-// });
+app.all("/{*any}", (req, res) => {
+  res.sendFile(path.join(buildPath, "index.html"));
+});
 // ===============================
 
 const HOST = process.env.HOST?.trim();
