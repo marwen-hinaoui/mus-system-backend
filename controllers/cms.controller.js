@@ -21,6 +21,25 @@ const getPNFromSequences = async (req, res) => {
   }
 };
 
+const getPNFromKitLeather = async (req, res) => {
+  const { kit_leather_pn } = req.params;
+
+  try {
+    const pool = await getPool();
+    const result = await pool.request().query(
+      `SELECT TOP 1 [part_number_cover]
+        FROM [plt_viewer].[dbo].[files]
+        WHERE [semi_finished_good_part_number] = '${kit_leather_pn}'
+        ORDER BY [updated_at] DESC;`
+    );
+
+    res.json(result.recordset);
+  } catch (err) {
+    console.error("Error in getPNFromSequences:", err);
+    res.status(500).send("Error fetching PN From Kit Leather");
+  }
+};
+
 const getProjet = async (req, res) => {
   const { cover_pn } = req.params;
 
@@ -110,4 +129,5 @@ module.exports = {
   getMaterial,
   // getPatternsPN,
   getHpglCode,
+  getPNFromKitLeather,
 };

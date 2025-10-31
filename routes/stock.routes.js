@@ -11,8 +11,13 @@ router.post(
 );
 router.post(
   "/ajout/admin",
-  verifyTokenAndRole(["Admin"]),
+  verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   stockController.ajoutStockAdmin
+);
+router.post(
+  "/ajout/admin/kit",
+  verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
+  stockController.ajoutStockAdminKitLeather
 );
 router.get(
   "/get",

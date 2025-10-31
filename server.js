@@ -32,6 +32,7 @@ app.use("/api/trim", require("./routes/trim.routes"));
 app.use("/api/cms", require("./routes/cms.routes"));
 app.use("/api/stock", require("./routes/stock.routes"));
 app.use("/api/rebuild", require("./routes/rebuild.routes"));
+app.use("/api/bins", require("./routes/bins.routes"));
 
 require("./services/demandeExpirationService");
 

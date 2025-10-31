@@ -6,6 +6,7 @@ const {
   getProjet,
   getMaterial,
   getHpglCode,
+  getPNFromKitLeather,
 } = require("../controllers/cms.controller");
 const verifyTokenAndRole = require("../middleware/verifyTokenAndRole");
 
@@ -25,13 +26,18 @@ router.get(
   getProjet
 );
 router.get(
+  "/pn/:kit_leather_pn",
+  // verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
+  getPNFromKitLeather
+);
+router.get(
   "/material/:cover_pn/:panel_number",
   verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   getMaterial
 );
 router.get(
   "/image/:patternPN",
-  // verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
+  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   getHpglCode
 );
 

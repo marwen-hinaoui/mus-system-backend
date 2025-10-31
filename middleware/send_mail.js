@@ -56,13 +56,7 @@ const buildTable = (subs) => `
 <td style="padding:8px;border-top:1px solid #eee;">${
             s.quantiteDisponible ?? "-"
           }</td>
-<td style="padding:8px;border-top:1px solid #eee;font-weight:bold;color:${
-            s.statusSubDemande === "Validé"
-              ? "green"
-              : s.statusSubDemande === "Rejeté"
-              ? "red"
-              : "#ffffff"
-          };">
+<td style="padding:8px;border-top:1px solid #eee;font-weight:bold;">
 
             ${s.statusSubDemande || "-"}
 </td>

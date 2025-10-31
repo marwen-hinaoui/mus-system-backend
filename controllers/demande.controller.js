@@ -119,7 +119,6 @@ const createDemande = async (req, res) => {
           html: `
               <h3>Status demande: ${newDemande.statusDemande}</h3>
               <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
-              <p><b>Status:</b> ${newDemande.statusDemande}</p>
               <h4>Détails:</h4>
               ${buildTable(createdSubs)}
                `,
@@ -163,13 +162,18 @@ const comfirmDemande = async (req, res) => {
         where: { partNumber: sub.partNumber },
       });
 
-      const patternFromDBTest = await pattern.findAll({
+      const patternFromDBTest = await pattern.findOne({
         where: {
           quantite: 0,
           id_gamme: gammeFromDB.id,
         },
       });
-      if (patternFromDBTest.length > 0) {
+      console.log(
+        "patternFromDBTest +++++++++++++++++++++++++++++++++++++++++++++"
+      );
+      console.log(patternFromDBTest);
+
+      if (patternFromDBTest?.length > 0) {
         inc++;
       }
       const materialFromDB = await material.findOne({
@@ -178,7 +182,7 @@ const comfirmDemande = async (req, res) => {
 
       if (!gammeFromDB || !materialFromDB) continue;
 
-      if (patternFromDBTest.length === 0) {
+      if (patternFromDBTest?.length === 0) {
         const patternFromDB = await pattern.findOne({
           where: {
             id_gamme: gammeFromDB.id,
@@ -233,7 +237,6 @@ const comfirmDemande = async (req, res) => {
           html: `
               <h3>Status demande: ${newDemande.statusDemande}</h3>
               <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
-              <p><b>Status:</b> ${newDemande.statusDemande}</p>
               <h4>Détails:</h4>
               ${buildTable(createdSubs)}
                `,
@@ -257,6 +260,9 @@ const comfirmDemande = async (req, res) => {
         },
       });
     } else {
+      console.log("inc +++++++++++++++++++++++++++++++++++++++++++");
+      console.log(inc);
+
       res.status(400).json({
         message: "Erreur creation demande!",
       });
@@ -459,11 +465,10 @@ const acceptDemandeAgent = async (req, res) => {
         const element = emails[index];
         await sendEmail({
           to: element,
-          subject: `Status demande:  ${demande.statusDemande} - ${demande.numDemande}`,
+          subject: `Status demande:  ${newStatus} - ${demande.numDemande}`,
           html: `
-              <h3>Status demande: ${demande.statusDemande}</h3>
+              <h3>Status demande: ${newStatus}</h3>
               <p>Numéro de demande: <b>${demande.numDemande}</b></p>
-              <p><b>Status:</b> ${demande.statusDemande}</p>
               <h4>Détails:</h4>
               ${buildTable(demande.subDemandeMUS)}
                `,
@@ -494,11 +499,10 @@ const acceptDemandeAgent = async (req, res) => {
         const element = emails[index];
         await sendEmail({
           to: element,
-          subject: `Status demande:  ${demande.statusDemande} - ${demande.numDemande}`,
+          subject: `Status demande:  ${newStatus} - ${demande.numDemande}`,
           html: `
-              <h3>Status demande: ${demande.statusDemande}</h3>
+              <h3>Status demande: ${newStatus}</h3>
               <p>Numéro de demande: <b>${demande.numDemande}</b></p>
-              <p><b>Status:</b> ${demande.statusDemande}</p>
               <h4>Détails:</h4>
               ${buildTable(demande.subDemandeMUS)}
                `,
@@ -590,7 +594,6 @@ const annulerDemandeDemandeur = async (req, res) => {
               html: `
               <h3>Status demande: ${demande.statusDemande}</h3>
               <p>Numéro de demande: <b>${demande.numDemande}</b></p>
-              <p><b>Status:</b> ${demande.statusDemande}</p>
               <h4>Détails:</h4>
               ${buildTable(demande.subDemandeMUS)}
                `,

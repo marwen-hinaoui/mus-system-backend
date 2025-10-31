@@ -104,11 +104,91 @@ const ajoutStockAdmin = async (req, res) => {
         partNumber: partNumber,
       },
     });
-    if (sequence === "x")
+
+    if (sequence === "-")
       if (!gammeFromDB) {
         gammeFromDB = await gamme.create({
           sequence,
           partNumber,
+          projetNom,
+        });
+      }
+
+    let patternFromDB = await pattern.findOne({
+      where: {
+        patternNumb: patternNumb,
+        id_gamme: gammeFromDB.id,
+      },
+    });
+
+    if (!patternFromDB) {
+      let materialFromDB = await material.findOne({
+        where: { partNumberMaterial },
+      });
+
+      if (!materialFromDB) {
+        materialFromDB = await material.create({
+          partNumberMaterial,
+          partNumberMateriaDescription: partNumberMateriaDescription || null,
+        });
+      }
+      patternFromDB = await pattern.create({
+        patternNumb,
+        quantite: quantiteAjouter,
+        id_gamme: gammeFromDB.id,
+        partNumberMaterial: materialFromDB.partNumberMaterial,
+        id_material: materialFromDB.id,
+      });
+    } else {
+      patternFromDB.quantite += quantiteAjouter;
+      await patternFromDB.save();
+    }
+
+    await mouvementCreation(
+      sequence,
+      gammeFromDB.partNumber,
+      patternFromDB.patternNumb,
+      partNumberMaterial,
+      quantiteAjouter,
+      "Introduite",
+      projetNom,
+      currentUserId
+    );
+    return res.status(200).json({
+      message: "Pattern ajouté avec succès",
+      updatedPattern: patternFromDB,
+    });
+  } catch (error) {
+    console.error("Erreur ajoutStock:", error);
+    return res
+      .status(500)
+      .json({ message: "Erreur interne du serveur", error: error.message });
+  }
+};
+const ajoutStockAdminKitLeather = async (req, res) => {
+  const currentUserId = req.user.id;
+
+  try {
+    const {
+      sequence,
+      partNumberCoiff,
+      patternNumb,
+      quantiteAjouter,
+      projetNom,
+      partNumberMaterial,
+      partNumberMateriaDescription,
+    } = req.body;
+
+    let gammeFromDB = await gamme.findOne({
+      where: {
+        partNumber: partNumberCoiff,
+      },
+    });
+    if (sequence === "-")
+      if (!gammeFromDB) {
+        gammeFromDB = await gamme.create({
+          sequence,
+          partNumber: partNumberCoiff,
           projetNom,
         });
       }
@@ -546,4 +626,5 @@ module.exports = {
   updateStock,
   updateMassiveStock,
   checkMassiveStock,
+  ajoutStockAdminKitLeather,
 };
