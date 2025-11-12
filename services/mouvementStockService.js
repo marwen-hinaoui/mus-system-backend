@@ -9,7 +9,8 @@ const mouvementCreation = async (
   quantite,
   statusMouvement,
   projetNom,
-  id_userMUS
+  id_userMUS,
+  bin_code
 ) => {
   try {
     const userFromDB = await userMUS.findByPk(id_userMUS);
@@ -27,6 +28,7 @@ const mouvementCreation = async (
       projetNom,
       id_userMUS,
       mvt_create: `${userFromDB.lastName} ${userFromDB.firstName}`,
+      bin_code,
     });
 
     return newMouvement;

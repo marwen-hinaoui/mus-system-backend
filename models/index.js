@@ -13,6 +13,8 @@ const projet = require("./projet");
 const user_role_MUS = require("./user_role_MUS");
 const user_projet = require("./user_projet");
 const mouvementStock = require("./mouvementStock");
+const bins = require("./bins");
+const pattern_bin = require("./pattern_bin");
 
 userMUS.belongsTo(fonction, { foreignKey: "id_fonction", as: "fonction" });
 
@@ -81,8 +83,22 @@ userMUS.belongsToMany(projet, {
 projet.belongsToMany(userMUS, {
   through: user_projet,
   foreignKey: "projetId",
-  as: "users",
   otherKey: "userId",
+  as: "users",
+});
+
+bins.belongsToMany(pattern, {
+  through: pattern_bin,
+  foreignKey: "binId",
+  otherKey: "patternId",
+  as: "pattern",
+});
+
+projet.belongsToMany(bins, {
+  through: pattern_bin,
+  foreignKey: "patternId",
+  otherKey: "binId",
+  as: "bins",
 });
 
 module.exports = { sequelize, userMUS, roleMUS };

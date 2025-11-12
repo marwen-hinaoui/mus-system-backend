@@ -2,7 +2,7 @@ const demandeMUS = require("../models/demandeMUS");
 const subDemandeMUS = require("../models/subDemandeMUS");
 const gamme = require("../models/gamme");
 const pattern = require("../models/pattern");
-const { Sequelize } = require("sequelize");
+const { Sequelize, Op } = require("sequelize");
 const site = require("../models/site");
 const projet = require("../models/projet");
 const userMUS = require("../models/userMUS");
@@ -14,6 +14,8 @@ const getUserRoles = require("../middleware/getUserRoles");
 const { sendEmail, buildTable } = require("../middleware/send_mail");
 // const { scheduleDemandeExpiration } = require("../scheduleDemandeExpiration");
 const user_projet = require("../models/user_projet");
+const pattern_bin = require("../models/pattern_bin");
+const bins = require("../models/bins");
 
 const getEmail = async (demandeProjet) => {
   const usersEmails = [];
@@ -148,6 +150,7 @@ const createDemande = async (req, res) => {
 const comfirmDemande = async (req, res) => {
   const { decision, demandeData, subDemandes } = req.body;
   var inc = 0;
+
   try {
     if (decision !== "accept") {
       return res.status(200).json({
@@ -161,28 +164,27 @@ const comfirmDemande = async (req, res) => {
       const gammeFromDB = await gamme.findOne({
         where: { partNumber: sub.partNumber },
       });
+      if (!gammeFromDB) continue;
 
       const patternFromDBTest = await pattern.findOne({
         where: {
+          patternNumb: sub.patternNumb,
           quantite: 0,
           id_gamme: gammeFromDB.id,
         },
       });
-      console.log(
-        "patternFromDBTest +++++++++++++++++++++++++++++++++++++++++++++"
-      );
-      console.log(patternFromDBTest);
 
-      if (patternFromDBTest?.length > 0) {
+      if (patternFromDBTest) {
         inc++;
       }
+
       const materialFromDB = await material.findOne({
         where: { partNumberMaterial: sub.materialPartNumber },
       });
 
-      if (!gammeFromDB || !materialFromDB) continue;
+      if (!materialFromDB) continue;
 
-      if (patternFromDBTest?.length === 0) {
+      if (!patternFromDBTest) {
         const patternFromDB = await pattern.findOne({
           where: {
             id_gamme: gammeFromDB.id,
@@ -247,7 +249,8 @@ const comfirmDemande = async (req, res) => {
           sub.statusSubDemande === "Hors stock" ||
           sub.statusSubDemande === "Stock limité"
       );
-
+      console.log("inc +++++++++++++++++++++++++++++++++++++++");
+      console.log(inc);
       res.status(201).json({
         message: "Demande initiée avec succès avec numéro",
         numeroDemande: newDemande.numDemande,
@@ -260,9 +263,6 @@ const comfirmDemande = async (req, res) => {
         },
       });
     } else {
-      console.log("inc +++++++++++++++++++++++++++++++++++++++++++");
-      console.log(inc);
-
       res.status(400).json({
         message: "Erreur creation demande!",
       });
@@ -363,7 +363,7 @@ const getDemandeById = async (req, res) => {
 };
 
 const acceptDemandeAgent = async (req, res) => {
-  const { nameButton } = req.body;
+  const { nameButton, selectedBins } = req.body;
   const { id } = req.params;
 
   const fullName = `${req.user.firstName} ${req.user.lastName}`;
@@ -381,11 +381,7 @@ const acceptDemandeAgent = async (req, res) => {
     if (demande.statusDemande === "Demande initiée") {
       newStatus = "Préparation en cours";
     }
-    // else {
-    //   res.status(400).json({
-    //     message: "Status déja changé!",
-    //   });
-    // }
+
     if (demande.statusDemande === "Préparation en cours") {
       const hasProblemSub = demande.subDemandeMUS.some(
         (sub) =>
@@ -420,12 +416,85 @@ const acceptDemandeAgent = async (req, res) => {
           console.log(`Gamme introuvable -> partNumber ${sub.partNumber}`);
         }
 
-        let delivered = Math.min(sub.quantite, patternFromDB?.quantite);
+        let delivered = Math.min(sub.quantite, sub?.quantiteDisponible);
+        console.log("delivered");
+        console.log(delivered);
         if (patternFromDB) {
-          patternFromDB.quantite -= sub.quantite;
-          if (patternFromDB.quantite < 0) patternFromDB.quantite = 0;
-          await patternFromDB.save();
-          if (sub.statusSubDemande !== "Hors stock" && delivered > 0) {
+          if (sub.statusSubDemande !== "Hors stock") {
+            const filterdSelectedBins = selectedBins.filter(
+              (item) => item.numSubDemande === sub.numSubDemande
+            );
+            console.log("filterdSelectedBins ////////// ");
+            console.log(filterdSelectedBins);
+            const binFromDB = await bins.findOne({
+              where: {
+                bin_code: filterdSelectedBins[0]?.bin,
+              },
+            });
+
+            const countPatternInBins = await pattern_bin.count({
+              where: {
+                binId: binFromDB?.id,
+              },
+            });
+            console.log("countPatternInBins ////////// ");
+            console.log(countPatternInBins);
+
+            if (patternFromDB.quantite === 0 && countPatternInBins > 1) {
+              console.log("CASE  ------------------------> 1 ");
+
+              await pattern_bin.destroy({
+                where: {
+                  binId: binFromDB?.id,
+                  patternId: patternFromDB?.id,
+                },
+              });
+
+              await bins.update(
+                { status: "Réservé" },
+                {
+                  where: {
+                    bin_code: filterdSelectedBins[0]?.bin,
+                    status: "Plein",
+                  },
+                }
+              );
+            }
+            if (patternFromDB.quantite === 0 && countPatternInBins === 1) {
+              console.log("CASE  ------------------------> 2 ");
+
+              await pattern_bin.destroy({
+                where: {
+                  binId: binFromDB?.id,
+                  patternId: patternFromDB?.id,
+                },
+              });
+
+              await bins.update(
+                { status: "Vide" },
+                {
+                  where: {
+                    bin_code: filterdSelectedBins[0]?.bin,
+                    status: {
+                      [Op.in]: ["Réservé", "Plein"],
+                    },
+                  },
+                }
+              );
+            }
+            if (patternFromDB.quantite > 0) {
+              console.log("CASE  ------------------------> 3 ");
+
+              await bins.update(
+                { status: "Réservé" },
+                {
+                  where: {
+                    bin_code: filterdSelectedBins[0]?.bin,
+                    status: "Plein",
+                  },
+                }
+              );
+            }
             await mouvementCreation(
               demande.sequence,
               sub.partNumber,
@@ -434,11 +503,10 @@ const acceptDemandeAgent = async (req, res) => {
               delivered,
               "Livré",
               demande.projetNom,
-              demande.id_userMUS
+              demande.id_userMUS,
+              binFromDB?.bin_code
             );
           }
-
-          console.log(`Pattern stock mise à jour: ${patternFromDB.quantite}`);
         } else {
           console.log(
             `Pattern introuvable --> gamme=${gammeFromDB.id}, material=${sub.materialPartNumber}, patternNumb=${sub.patternNumb}`
@@ -460,20 +528,20 @@ const acceptDemandeAgent = async (req, res) => {
       );
       // delete redis[`expiry:${demande.id}`];
 
-      const emails = await getEmail(demande.projetNom);
-      for (let index = 0; index < emails.length; index++) {
-        const element = emails[index];
-        await sendEmail({
-          to: element,
-          subject: `Status demande:  ${newStatus} - ${demande.numDemande}`,
-          html: `
-              <h3>Status demande: ${newStatus}</h3>
-              <p>Numéro de demande: <b>${demande.numDemande}</b></p>
-              <h4>Détails:</h4>
-              ${buildTable(demande.subDemandeMUS)}
-               `,
-        });
-      }
+      // const emails = await getEmail(demande.projetNom);
+      // for (let index = 0; index < emails.length; index++) {
+      //   const element = emails[index];
+      //   await sendEmail({
+      //     to: element,
+      //     subject: `Status demande:  ${newStatus} - ${demande.numDemande}`,
+      //     html: `
+      //         <h3>Status demande: ${newStatus}</h3>
+      //         <p>Numéro de demande: <b>${demande.numDemande}</b></p>
+      //         <h4>Détails:</h4>
+      //         ${buildTable(demande.subDemandeMUS)}
+      //          `,
+      //   });
+      // }
       res.status(200).json({
         message: newStatus,
         data: { id, newStatus },
@@ -490,24 +558,26 @@ const acceptDemandeAgent = async (req, res) => {
       demande.statusDemande == "Préparation en cours" &&
       nameButton == "Livree"
     ) {
+      console.log(selectedBins);
+
       await demandeMUS.update(
         { statusDemande: newStatus, livreePar: fullName },
         { where: { id } }
       );
-      const emails = await getEmail(demande.projetNom);
-      for (let index = 0; index < emails.length; index++) {
-        const element = emails[index];
-        await sendEmail({
-          to: element,
-          subject: `Status demande:  ${newStatus} - ${demande.numDemande}`,
-          html: `
-              <h3>Status demande: ${newStatus}</h3>
-              <p>Numéro de demande: <b>${demande.numDemande}</b></p>
-              <h4>Détails:</h4>
-              ${buildTable(demande.subDemandeMUS)}
-               `,
-        });
-      }
+      // const emails = await getEmail(demande.projetNom);
+      // for (let index = 0; index < emails.length; index++) {
+      //   const element = emails[index];
+      //   await sendEmail({
+      //     to: element,
+      //     subject: `Status demande:  ${newStatus} - ${demande.numDemande}`,
+      //     html: `
+      //         <h3>Status demande: ${newStatus}</h3>
+      //         <p>Numéro de demande: <b>${demande.numDemande}</b></p>
+      //         <h4>Détails:</h4>
+      //         ${buildTable(demande.subDemandeMUS)}
+      //          `,
+      //   });
+      // }
       res.status(200).json({
         message: newStatus,
         data: { id, newStatus },

@@ -1,9 +1,11 @@
 const gamme = require("../models/gamme");
 const pattern = require("../models/pattern");
 const material = require("../models/material");
-const { Sequelize } = require("sequelize");
+const { Sequelize, where } = require("sequelize");
 const { mouvementCreation } = require("../services/mouvementStockService");
 const { getStockQuantity } = require("../services/checkStockService");
+const pattern_bin = require("../models/pattern_bin");
+const bins = require("../models/bins");
 
 const ajoutStock = async (req, res) => {
   const currentUserId = req.user.id;
@@ -16,14 +18,25 @@ const ajoutStock = async (req, res) => {
       projetNom,
       partNumberMaterial,
       partNumberMateriaDescription,
+      bin_code, // Old bin : will be Plein
+      bin_code_plein, // New bin
     } = req.body;
+
+    if (bin_code === "") {
+      return res.status(401).json({ message: "Bin code vide" });
+    }
 
     let gammeFromDB = await gamme.findOne({
       where: {
         partNumber: partNumber,
       },
     });
-    console.log(gammeFromDB);
+
+    const idBinFromDB = await bins.findOne({
+      where: {
+        bin_code: bin_code_plein !== "" ? bin_code_plein : bin_code,
+      },
+    });
 
     if (!gammeFromDB) {
       gammeFromDB = await gamme.create({
@@ -45,7 +58,6 @@ const ajoutStock = async (req, res) => {
         where: { partNumberMaterial },
       });
 
-      console.log(materialFromDB);
       if (!materialFromDB) {
         materialFromDB = await material.create({
           partNumberMaterial,
@@ -63,7 +75,33 @@ const ajoutStock = async (req, res) => {
       patternFromDB.quantite += quantiteAjouter;
       await patternFromDB.save();
     }
-
+    const pattern_binFromDB = await pattern_bin.findOne({
+      where: {
+        binId: idBinFromDB?.id,
+        patternId: patternFromDB.id,
+      },
+    });
+    if (
+      patternFromDB &&
+      idBinFromDB?.status !== "Plein" &&
+      !pattern_binFromDB
+    ) {
+      const pattternBinFromDB = await pattern_bin.create({
+        binId: idBinFromDB?.id,
+        patternId: patternFromDB.id,
+      });
+      pattternBinFromDB &&
+        (await bins.update(
+          { status: "Réservé" },
+          { where: { status: "Vide", id: idBinFromDB?.id } }
+        ));
+    }
+    if (bin_code_plein !== "") {
+      await bins.update(
+        { status: "Plein" },
+        { where: { bin_code: bin_code, status: "Réservé" } }
+      );
+    }
     await mouvementCreation(
       sequence,
       gammeFromDB.partNumber,
@@ -72,7 +110,8 @@ const ajoutStock = async (req, res) => {
       quantiteAjouter,
       "Introduite",
       projetNom,
-      currentUserId
+      currentUserId,
+      bin_code_plein !== "" ? bin_code_plein : bin_code
     );
     return res.status(200).json({
       message: "Pattern ajouté avec succès",
@@ -97,15 +136,24 @@ const ajoutStockAdmin = async (req, res) => {
       projetNom,
       partNumberMaterial,
       partNumberMateriaDescription,
+      bin_code, // Old bin : will be Plein
+      bin_code_plein, // New bin
     } = req.body;
+    if (bin_code === "") {
+      return res.status(401).json({ message: "Bin code vide" });
+    }
 
     let gammeFromDB = await gamme.findOne({
       where: {
         partNumber: partNumber,
       },
     });
-
-    if (sequence === "-")
+    const idBinFromDB = await bins.findOne({
+      where: {
+        bin_code: bin_code_plein !== "" ? bin_code_plein : bin_code,
+      },
+    });
+    if (sequence === "N/A")
       if (!gammeFromDB) {
         gammeFromDB = await gamme.create({
           sequence,
@@ -143,7 +191,23 @@ const ajoutStockAdmin = async (req, res) => {
       patternFromDB.quantite += quantiteAjouter;
       await patternFromDB.save();
     }
-
+    if (patternFromDB && idBinFromDB?.status !== "Plein") {
+      const pattternBinFromDB = await pattern_bin.create({
+        binId: idBinFromDB?.id,
+        patternId: patternFromDB.id,
+      });
+      pattternBinFromDB &&
+        (await bins.update(
+          { status: "Réservé" },
+          { where: { status: "Vide", id: idBinFromDB?.id } }
+        ));
+    }
+    if (bin_code_plein !== "") {
+      await bins.update(
+        { status: "Plein" },
+        { where: { bin_code: bin_code, status: "Réservé" } }
+      );
+    }
     await mouvementCreation(
       sequence,
       gammeFromDB.partNumber,
@@ -152,7 +216,8 @@ const ajoutStockAdmin = async (req, res) => {
       quantiteAjouter,
       "Introduite",
       projetNom,
-      currentUserId
+      currentUserId,
+      bin_code_plein !== "" ? bin_code_plein : bin_code
     );
     return res.status(200).json({
       message: "Pattern ajouté avec succès",
@@ -165,7 +230,7 @@ const ajoutStockAdmin = async (req, res) => {
       .json({ message: "Erreur interne du serveur", error: error.message });
   }
 };
-const ajoutStockAdminKitLeather = async (req, res) => {
+const ajoutStockKitLeather = async (req, res) => {
   const currentUserId = req.user.id;
 
   try {
@@ -177,14 +242,23 @@ const ajoutStockAdminKitLeather = async (req, res) => {
       projetNom,
       partNumberMaterial,
       partNumberMateriaDescription,
+      bin_code, // Old bin : will be Plein
+      bin_code_plein, // New bin
     } = req.body;
-
+    if (bin_code === "") {
+      return res.status(401).json({ message: "Bin code vide" });
+    }
     let gammeFromDB = await gamme.findOne({
       where: {
         partNumber: partNumberCoiff,
       },
     });
-    if (sequence === "-")
+    const idBinFromDB = await bins.findOne({
+      where: {
+        bin_code: bin_code_plein !== "" ? bin_code_plein : bin_code,
+      },
+    });
+    if (sequence === "N/A")
       if (!gammeFromDB) {
         gammeFromDB = await gamme.create({
           sequence,
@@ -222,7 +296,23 @@ const ajoutStockAdminKitLeather = async (req, res) => {
       patternFromDB.quantite += quantiteAjouter;
       await patternFromDB.save();
     }
-
+    if (patternFromDB && idBinFromDB?.status !== "Plein") {
+      const pattternBinFromDB = await pattern_bin.create({
+        binId: idBinFromDB?.id,
+        patternId: patternFromDB.id,
+      });
+      pattternBinFromDB &&
+        (await bins.update(
+          { status: "Réservé" },
+          { where: { status: "Vide", id: idBinFromDB?.id } }
+        ));
+    }
+    if (bin_code_plein !== "") {
+      await bins.update(
+        { status: "Plein" },
+        { where: { bin_code: bin_code, status: "Réservé" } }
+      );
+    }
     await mouvementCreation(
       sequence,
       gammeFromDB.partNumber,
@@ -231,7 +321,8 @@ const ajoutStockAdminKitLeather = async (req, res) => {
       quantiteAjouter,
       "Introduite",
       projetNom,
-      currentUserId
+      currentUserId,
+      bin_code_plein !== "" ? bin_code_plein : bin_code
     );
     return res.status(200).json({
       message: "Pattern ajouté avec succès",
@@ -332,128 +423,11 @@ const updateStock = async (req, res) => {
   }
 };
 
-// const updateMassiveStock = async (req, res) => {
-//   const { dataQte } = req.body;
-//   console.log(dataQte);
-
-//   try {
-//     dataQte.map(async (element) => {
-//       const gammeFromDB = await gamme.findOne({
-//         where: {
-//           partNumber: element.partNumber,
-//         },
-//       });
-//       if (gammeFromDB) {
-//         await pattern.update(
-//           {
-//             quantite: element.quantite,
-//           },
-//           {
-//             where: {
-//               id_gamme: gammeFromDB.id,
-//               patternNumb: element.partNumber,
-//             },
-//           }
-//         );
-//       }
-//     });
-//     res.status(200).json({
-//       message: "update success!",
-//     });
-//   } catch (error) {
-//     console.log(error);
-//     return res.status(500).json({ message: "Server error" });
-//   }
-// };
-
-// const updateMassiveStock = async (req, res) => {
-//   const { dataQte } = req.body;
-
-//   if (!Array.isArray(dataQte) || dataQte.length === 0) {
-//     return res
-//       .status(400)
-//       .json({ message: "dataQte must be a non-empty array" });
-//   }
-
-//   const results = [];
-//   let updatedCount;
-//   try {
-//     for (const element of dataQte) {
-//       try {
-//         const gammeFromDB = await gamme.findOne({
-//           where: { partNumber: element.partNumber },
-//         });
-
-//         if (!gammeFromDB) {
-//           results.push({
-//             partNumber: element.partNumber,
-//             updated: false,
-//           });
-//           continue;
-//         }
-//         // const updatedCount = await pattern.update(
-//         //   { quantite: element.quantite },
-//         //   {
-//         //     where: {
-//         //       id_gamme: gammeFromDB.id,
-//         //       patternNumb: element.patternNumb,
-//         //     },
-//         //   }
-//         // );
-
-//         const patternFromDB = await pattern.findOne({
-//           where: {
-//             id_gamme: gammeFromDB.id,
-//             patternNumb: element.patternNumb,
-//           },
-//         });
-
-//         if (patternFromDB && patternFromDB.quantite !== element.quantite) {
-//           patternFromDB.quantite = element.quantite;
-//           await patternFromDB.save();
-//           results.push({
-//             partNumber: element.partNumber,
-//             pattern: patternFromDB.patternNumb,
-//             updated: true,
-//           });
-//         } else {
-//           results.push({
-//             partNumber: element.partNumber,
-//             pattern: element.patternNumb,
-//             updated: false,
-//           });
-//           console.log(
-//             "-----------------------updatedCount------------------------------"
-//           );
-//           console.log(updatedCount);
-//         }
-//       } catch (error) {
-//         console.log(error);
-//       }
-//     }
-
-//     const updated = results.filter((r) => r.updated === true).length;
-//     res.status(200).json({
-//       message: "Update process completed",
-//       updated,
-//       details: results,
-//     });
-//   } catch (error) {
-//     console.error("Massive update error:", error);
-//     res.status(500).json({
-//       message: "Server error during massive update",
-//       error: error.message,
-//     });
-//   }
-// };
-
 const checkMassiveStock = async (req, res) => {
   const { dataQte } = req.body;
 
   if (!Array.isArray(dataQte) || dataQte.length === 0) {
-    return res
-      .status(400)
-      .json({ message: "dataQte must be a non-empty array" });
+    return res.status(400).json({ message: "data must be  not empty!" });
   }
 
   const results = [];
@@ -626,5 +600,5 @@ module.exports = {
   updateStock,
   updateMassiveStock,
   checkMassiveStock,
-  ajoutStockAdminKitLeather,
+  ajoutStockKitLeather,
 };

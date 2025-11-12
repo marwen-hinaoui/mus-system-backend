@@ -4,6 +4,11 @@ const sequelize = require("../config/db");
 const bins = sequelize.define(
   "bins",
   {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
     bin_code: {
       type: DataTypes.STRING,
       allowNull: false,

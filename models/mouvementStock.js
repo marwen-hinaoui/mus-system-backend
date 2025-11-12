@@ -46,6 +46,10 @@ const mouvementStock = sequelize.define(
       type: DataTypes.STRING(33),
       allowNull: false,
     },
+    bin_code: {
+      type: DataTypes.STRING(33),
+      allowNull: false,
+    },
     id_userMUS: {
       type: DataTypes.INTEGER,
     },
