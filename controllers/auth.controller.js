@@ -52,6 +52,7 @@ const login = async (req, res) => {
         lastName: user.lastName,
         redirection: redirect,
         fonction: userFonction.nom,
+        _site: user.id_site === 1 ? "Greenfield" : "Brownfield",
       },
       process.env.JWT_REFRESH_SECRET_KEY,
       { expiresIn: "7d" }
@@ -73,6 +74,7 @@ const login = async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       fonction: userFonction.nom,
+      _site: user.id_site === 1 ? "Greenfield" : "Brownfield",
     });
   } catch (error) {
     console.error("Erreur lors du login:", error);
@@ -174,6 +176,7 @@ const refreshAccessToken = async (req, res) => {
         lastName: user.lastName,
         redirection: decoded.redirection,
         fonction: decoded.fonction,
+        _site: user.id_site === 1 ? "Greenfield" : "Brownfield",
       });
     }
   );

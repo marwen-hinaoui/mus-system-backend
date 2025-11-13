@@ -1,78 +1,16 @@
 const { Op } = require("sequelize");
 const bins = require("../models/bins");
 const gamme = require("../models/gamme");
+const userMUS = require("../models/userMUS");
 const pattern = require("../models/pattern");
 const pattern_bin = require("../models/pattern_bin");
 const getProjetService = require("../services/getProjetService");
+const getUserRoles = require("../middleware/getUserRoles");
 
-const getBinsFromPattern = async (req, res) => {
-  try {
-    const { partNumber, _pattern } = req.params;
-    let binsFromDB = [];
-    let patternFromDB;
-    const gammeFromDB = await gamme.findOne({
-      where: { partNumber },
-    });
-
-    if (gammeFromDB) {
-      patternFromDB = await pattern.findOne({
-        where: { patternNumb: _pattern, id_gamme: gammeFromDB.id },
-      });
-    }
-    if (patternFromDB) {
-      const project = await getProjetService(partNumber);
-      const binLinks = await pattern_bin.findAll({
-        where: { patternId: patternFromDB.id },
-      });
-      if (binLinks.length === 0) {
-        binsFromDB = await bins.findAll({
-          where: {
-            status: {
-              [Op.ne]: "Plein",
-            },
-            project,
-          },
-        });
-        console.log("if");
-        console.log(binsFromDB);
-      } else {
-        const binIds = binLinks.map((link) => link.binId);
-
-        binsFromDB = await bins.findAll({
-          where: {
-            id: {
-              [Op.in]: binIds,
-            },
-            status: {
-              [Op.ne]: "Plein",
-            },
-          },
-        });
-        console.log("else");
-        console.log(binsFromDB);
-      }
-    } else {
-      const project = await getProjetService(partNumber);
-
-      binsFromDB = await bins.findAll({
-        where: {
-          project,
-          status: {
-            [Op.ne]: "Plein",
-          },
-        },
-      });
-    }
-
-    res.status(200).json({ data: binsFromDB });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: error.message });
-  }
-};
 const getBinsFromPatternLivree = async (req, res) => {
   try {
     const { partNumber, _pattern } = req.params;
+
     let binsFromDB = [];
     let patternFromDB;
     const gammeFromDB = await gamme.findOne({
@@ -110,21 +48,152 @@ const getBinsFromPatternLivree = async (req, res) => {
   }
 };
 
-const binsFromProjet = async (req, res) => {
-  const { project, bin_code } = req.params;
+const getBinsFromPattern = async (req, res) => {
   try {
-    const binsFromDB = await bins.findAll({
-      where: {
-        status: {
-          [Op.ne]: "Plein",
-        },
-        bin_code: {
-          [Op.ne]: bin_code,
-        },
-        project: project,
-      },
+    const { partNumber, _pattern, id_user } = req.params;
+    const userFromDB = await userMUS.findByPk(id_user);
+
+    let binCodeCondition = {};
+    const project = await getProjetService(partNumber);
+    const roleList = await getUserRoles(id_user);
+
+    if (userFromDB?.id_site === 2) {
+      if (project === "D-CROSS") {
+        binCodeCondition = {
+          bin_code: {
+            [Op.like]: "G%",
+          },
+        };
+      } else if (project === "773W") {
+        binCodeCondition = {
+          bin_code: {
+            [Op.like]: "H%",
+          },
+        };
+      }
+    } else {
+      if (project === "D-CROSS") {
+        binCodeCondition = {
+          bin_code: {
+            [Op.notLike]: "G%",
+          },
+        };
+      } else if (project === "773W") {
+        binCodeCondition = {
+          bin_code: {
+            [Op.notLike]: "H%",
+          },
+        };
+      }
+    }
+
+    let binsFromDB = [];
+    let patternFromDB;
+    const gammeFromDB = await gamme.findOne({
+      where: { partNumber },
     });
-    console.log(binsFromDB);
+
+    if (gammeFromDB) {
+      patternFromDB = await pattern.findOne({
+        where: { patternNumb: _pattern, id_gamme: gammeFromDB.id },
+      });
+    }
+    if (patternFromDB) {
+      const binLinks = await pattern_bin.findAll({
+        where: { patternId: patternFromDB.id },
+      });
+      if (binLinks.length === 0) {
+        binsFromDB = await bins.findAll({
+          where: {
+            status: {
+              [Op.ne]: "Plein",
+            },
+            project,
+            ...binCodeCondition,
+          },
+        });
+        console.log("if");
+        console.log(binsFromDB);
+      } else {
+        const binIds = binLinks.map((link) => link.binId);
+
+        binsFromDB = await bins.findAll({
+          where: {
+            id: {
+              [Op.in]: binIds,
+            },
+            status: {
+              [Op.ne]: "Plein",
+            },
+            ...binCodeCondition,
+          },
+        });
+        console.log("else");
+        console.log(binsFromDB);
+      }
+    } else {
+      binsFromDB = await bins.findAll({
+        where: {
+          project,
+          status: {
+            [Op.ne]: "Plein",
+          },
+          ...binCodeCondition,
+        },
+      });
+    }
+
+    res.status(200).json({ data: binsFromDB });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const binsFromProjet = async (req, res) => {
+  const { project, bin_code, id_user } = req.params;
+  try {
+    let binCodeCondition = {};
+    const userFromDB = await userMUS.findByPk(id_user);
+    const roleList = await getUserRoles(id_user);
+
+    if (userFromDB?.id_site === 2) {
+      if (project === "D-CROSS") {
+        binCodeCondition = {
+          [Op.like]: "G%",
+        };
+      } else if (project === "773W") {
+        binCodeCondition = {
+          [Op.like]: "H%",
+        };
+      }
+    } else {
+      if (project === "D-CROSS") {
+        binCodeCondition = {
+          [Op.notLike]: "G%",
+        };
+      } else if (project === "773W") {
+        binCodeCondition = {
+          [Op.notLike]: "H%",
+        };
+      }
+    }
+
+    const whereConditions = {
+      status: {
+        [Op.ne]: "Plein",
+      },
+
+      bin_code: {
+        [Op.ne]: bin_code,
+        ...binCodeCondition,
+      },
+      project: project,
+    };
+
+    const binsFromDB = await bins.findAll({
+      where: whereConditions,
+    });
 
     res.status(200).json({ data: binsFromDB });
   } catch (error) {
@@ -227,6 +296,7 @@ const assignBinToProject = async (req, res) => {
 //     res.status(500).json({ error: err.message });
 //   }
 // };
+
 const generateBins = async (req, res) => {
   try {
     // const count = await bins.count();

@@ -47,6 +47,9 @@ const getEmail = async (demandeProjet) => {
 const createDemande = async (req, res) => {
   const { sequence, demandeData, subDemandes = [] } = req.body;
   let countDisponible = 0;
+
+  const userFromDB = await userMUS.findByPk(demandeData.id_userMUS);
+
   try {
     const subDemandePreview = [];
 
@@ -65,6 +68,7 @@ const createDemande = async (req, res) => {
           where: {
             patternNumb: sub.patternNumb,
             id_gamme: gammeFromDB.id,
+            site: userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield",
           },
         });
 
@@ -97,6 +101,7 @@ const createDemande = async (req, res) => {
     if (countDisponible === 0) {
       const newDemande = await demandeMUS.create({
         ...demandeData,
+        id_site: userFromDB?.id_site,
         sequence,
         statusDemande: "Hors stock",
       });
@@ -150,6 +155,7 @@ const createDemande = async (req, res) => {
 const comfirmDemande = async (req, res) => {
   const { decision, demandeData, subDemandes } = req.body;
   var inc = 0;
+  const userFromDB = await userMUS.findByPk(demandeData.id_userMUS);
 
   try {
     if (decision !== "accept") {
@@ -171,6 +177,7 @@ const comfirmDemande = async (req, res) => {
           patternNumb: sub.patternNumb,
           quantite: 0,
           id_gamme: gammeFromDB.id,
+          site: userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield",
         },
       });
 
@@ -190,6 +197,7 @@ const comfirmDemande = async (req, res) => {
             id_gamme: gammeFromDB.id,
             patternNumb: sub.patternNumb,
             id_material: materialFromDB.id,
+            site: userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield",
           },
         });
 
@@ -205,6 +213,7 @@ const comfirmDemande = async (req, res) => {
     if (inc === 0) {
       const newDemande = await demandeMUS.create({
         ...demandeData,
+        id_site: userFromDB?.id_site,
         statusDemande: "Demande initiée",
       });
 
@@ -376,6 +385,7 @@ const acceptDemandeAgent = async (req, res) => {
     if (!demande) {
       return res.status(404).json({ message: "Demande not found" });
     }
+    const userFromDB = await userMUS.findByPk(demande.id_userMUS);
 
     let newStatus = demande.statusDemande;
     if (demande.statusDemande === "Demande initiée") {
@@ -504,7 +514,8 @@ const acceptDemandeAgent = async (req, res) => {
               "Livré",
               demande.projetNom,
               demande.id_userMUS,
-              binFromDB?.bin_code
+              binFromDB?.bin_code,
+              userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
             );
           }
         } else {
@@ -639,6 +650,7 @@ const annulerDemandeDemandeur = async (req, res) => {
               id_gamme: gammeFromDB?.id,
               patternNumb: sub.patternNumb,
               id_material: materialFromDB?.id,
+              site: demande?.id_site === 1 ? "Greenfield" : "Brownfield",
             },
           });
           if (!patternFromDB) continue;

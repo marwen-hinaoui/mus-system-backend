@@ -22,7 +22,7 @@ router.get(
 );
 router.get(
   "/projet/:cover_pn",
-  verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
+  // verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   getProjet
 );
 router.get(

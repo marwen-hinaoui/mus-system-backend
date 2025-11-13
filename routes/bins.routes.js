@@ -19,19 +19,19 @@ router.get("/", verifyTokenAndRole(["Admin"]), getMainBins);
 router.post("/assign", verifyTokenAndRole(["Admin"]), assignBinToProject);
 
 router.get(
-  "/:partNumber/:_pattern",
-  verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
-  getBinsFromPattern
-);
-router.get(
   "/livree/:partNumber/:_pattern",
-  // verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
+  verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   getBinsFromPatternLivree
 );
 
 router.get(
-  "/:project/not/:bin_code",
-  // verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
+  "/:partNumber/:_pattern/:id_user",
+  verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
+  getBinsFromPattern
+);
+router.get(
+  "/:project/not/:bin_code/:id_user",
+  verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   binsFromProjet
 );
 

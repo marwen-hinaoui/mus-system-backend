@@ -2,6 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const { getPool } = require("../config/db_plt");
 const getPatternsSQL = require("../middleware/sqlQuery");
+const getProjetService = require("../services/getProjetService");
 
 const getPNFromSequences = async (req, res) => {
   const { sequence } = req.params;
@@ -13,7 +14,6 @@ const getPNFromSequences = async (req, res) => {
       .query(
         `SELECT [cover_part_number] FROM [plt_viewer].[dbo].[sequences] WHERE [sequence] = '${sequence}'`
       );
-
     res.json(result.recordset);
   } catch (err) {
     console.error("Error in getPNFromSequences:", err);
@@ -44,14 +44,9 @@ const getProjet = async (req, res) => {
   const { cover_pn } = req.params;
 
   try {
-    const pool = await getPool();
-    const result = await pool
-      .request()
-      .query(
-        `SELECT [projet] FROM [plt_viewer].[dbo].[files] WHERE [part_number_cover] = '${cover_pn}'`
-      );
+    let projet = await getProjetService(cover_pn);
 
-    res.json(result.recordset[0]);
+    res.json({ projet });
   } catch (err) {
     console.error("Error in getProjet:", err);
     res.status(500).send("Error fetching getProjet");

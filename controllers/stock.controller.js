@@ -1,16 +1,18 @@
 const gamme = require("../models/gamme");
 const pattern = require("../models/pattern");
 const material = require("../models/material");
-const { Sequelize, where } = require("sequelize");
+const { Sequelize } = require("sequelize");
 const { mouvementCreation } = require("../services/mouvementStockService");
 const { getStockQuantity } = require("../services/checkStockService");
 const pattern_bin = require("../models/pattern_bin");
 const bins = require("../models/bins");
+const { userMUS } = require("../models");
 
 const ajoutStock = async (req, res) => {
   const currentUserId = req.user.id;
   try {
     const {
+      id_userMUS,
       sequence,
       partNumber,
       patternNumb,
@@ -21,6 +23,8 @@ const ajoutStock = async (req, res) => {
       bin_code, // Old bin : will be Plein
       bin_code_plein, // New bin
     } = req.body;
+
+    const userFromDB = await userMUS.findByPk(id_userMUS);
 
     if (bin_code === "") {
       return res.status(401).json({ message: "Bin code vide" });
@@ -70,6 +74,7 @@ const ajoutStock = async (req, res) => {
         id_gamme: gammeFromDB.id,
         partNumberMaterial: materialFromDB.partNumberMaterial,
         id_material: materialFromDB.id,
+        site: userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield",
       });
     } else {
       patternFromDB.quantite += quantiteAjouter;
@@ -111,7 +116,8 @@ const ajoutStock = async (req, res) => {
       "Introduite",
       projetNom,
       currentUserId,
-      bin_code_plein !== "" ? bin_code_plein : bin_code
+      bin_code_plein !== "" ? bin_code_plein : bin_code,
+      userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
     );
     return res.status(200).json({
       message: "Pattern ajouté avec succès",
@@ -138,10 +144,12 @@ const ajoutStockAdmin = async (req, res) => {
       partNumberMateriaDescription,
       bin_code, // Old bin : will be Plein
       bin_code_plein, // New bin
+      id_userMUS,
     } = req.body;
     if (bin_code === "") {
       return res.status(401).json({ message: "Bin code vide" });
     }
+    const userFromDB = await userMUS.findByPk(id_userMUS);
 
     let gammeFromDB = await gamme.findOne({
       where: {
@@ -186,6 +194,7 @@ const ajoutStockAdmin = async (req, res) => {
         id_gamme: gammeFromDB.id,
         partNumberMaterial: materialFromDB.partNumberMaterial,
         id_material: materialFromDB.id,
+        site: userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield",
       });
     } else {
       patternFromDB.quantite += quantiteAjouter;
@@ -217,7 +226,8 @@ const ajoutStockAdmin = async (req, res) => {
       "Introduite",
       projetNom,
       currentUserId,
-      bin_code_plein !== "" ? bin_code_plein : bin_code
+      bin_code_plein !== "" ? bin_code_plein : bin_code,
+      userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
     );
     return res.status(200).json({
       message: "Pattern ajouté avec succès",
@@ -244,10 +254,13 @@ const ajoutStockKitLeather = async (req, res) => {
       partNumberMateriaDescription,
       bin_code, // Old bin : will be Plein
       bin_code_plein, // New bin
+      id_userMUS,
     } = req.body;
     if (bin_code === "") {
       return res.status(401).json({ message: "Bin code vide" });
     }
+    const userFromDB = await userMUS.findByPk(id_userMUS);
+
     let gammeFromDB = await gamme.findOne({
       where: {
         partNumber: partNumberCoiff,
@@ -291,6 +304,7 @@ const ajoutStockKitLeather = async (req, res) => {
         id_gamme: gammeFromDB.id,
         partNumberMaterial: materialFromDB.partNumberMaterial,
         id_material: materialFromDB.id,
+        site: userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield",
       });
     } else {
       patternFromDB.quantite += quantiteAjouter;
@@ -322,7 +336,8 @@ const ajoutStockKitLeather = async (req, res) => {
       "Introduite",
       projetNom,
       currentUserId,
-      bin_code_plein !== "" ? bin_code_plein : bin_code
+      bin_code_plein !== "" ? bin_code_plein : bin_code,
+      userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
     );
     return res.status(200).json({
       message: "Pattern ajouté avec succès",
@@ -343,6 +358,7 @@ const getAllStock = async (req, res) => {
         "id",
         "patternNumb",
         "quantite",
+        "site",
         [Sequelize.col("material.partNumberMaterial"), "partNumberMaterial"],
         [Sequelize.col("gamme.partNumber"), "partNumber"],
         [Sequelize.col("gamme.projetNom"), "projetNom"],
