@@ -21,7 +21,7 @@ router.post(
 );
 router.get(
   "/get",
-  verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
+  // verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   stockController.getAllStock
 );
 router.post(
@@ -49,9 +49,9 @@ router.post(
   verifyTokenAndRole(["Admin", "GESTIONNAIRE_STOCK"]),
   stockController.updateMassiveStock
 );
-router.post(
-  "/check/massive",
-  verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
-  stockController.checkMassiveStock
-);
+// router.post(
+//   "/check/massive",
+//   verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
+//   stockController.checkMassiveStock
+// );
 module.exports = router;

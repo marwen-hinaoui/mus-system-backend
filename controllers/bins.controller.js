@@ -55,7 +55,7 @@ const getBinsFromPattern = async (req, res) => {
 
     let binCodeCondition = {};
     const project = await getProjetService(partNumber);
-    const roleList = await getUserRoles(id_user);
+    console.log("getBinsFromPattern  | id_site -------->", userFromDB?.id_site);
 
     if (userFromDB?.id_site === 2) {
       if (project === "D-CROSS") {
@@ -72,19 +72,11 @@ const getBinsFromPattern = async (req, res) => {
         };
       }
     } else {
-      if (project === "D-CROSS") {
-        binCodeCondition = {
-          bin_code: {
-            [Op.notLike]: "G%",
-          },
-        };
-      } else if (project === "773W") {
-        binCodeCondition = {
-          bin_code: {
-            [Op.notLike]: "H%",
-          },
-        };
-      }
+      binCodeCondition = {
+        bin_code: {
+          [Op.and]: [{ [Op.notLike]: "G%" }, { [Op.notLike]: "H%" }],
+        },
+      };
     }
 
     let binsFromDB = [];
@@ -155,7 +147,7 @@ const binsFromProjet = async (req, res) => {
   try {
     let binCodeCondition = {};
     const userFromDB = await userMUS.findByPk(id_user);
-    const roleList = await getUserRoles(id_user);
+    console.log("binsFromProjet  | id_site -------->", userFromDB?.id_site);
 
     if (userFromDB?.id_site === 2) {
       if (project === "D-CROSS") {
@@ -168,15 +160,13 @@ const binsFromProjet = async (req, res) => {
         };
       }
     } else {
-      if (project === "D-CROSS") {
-        binCodeCondition = {
-          [Op.notLike]: "G%",
-        };
-      } else if (project === "773W") {
-        binCodeCondition = {
-          [Op.notLike]: "H%",
-        };
-      }
+      binCodeCondition = {
+        [Op.and]: [
+          { [Op.notLike]: "G%" },
+          { [Op.notLike]: "H%" },
+          { [Op.ne]: bin_code },
+        ],
+      };
     }
 
     const whereConditions = {
@@ -184,10 +174,8 @@ const binsFromProjet = async (req, res) => {
         [Op.ne]: "Plein",
       },
 
-      bin_code: {
-        [Op.ne]: bin_code,
-        ...binCodeCondition,
-      },
+      bin_code: binCodeCondition,
+
       project: project,
     };
 

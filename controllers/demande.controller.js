@@ -622,7 +622,7 @@ const annulerDemandeDemandeur = async (req, res) => {
 
   const whereClause = isAdmin ? { id } : { id, id_userMUS: currentUserId };
   try {
-    const demande = await demandeMUS.findOne({ where: whereClause });
+    let demande = await demandeMUS.findOne({ where: whereClause });
     const subDemandeFromDB = await subDemandeMUS.findAll({
       where: { id_demandeMUS: demande.id },
     });
@@ -631,7 +631,7 @@ const annulerDemandeDemandeur = async (req, res) => {
       return res.status(404).json({ message: "Demande not found" });
     }
 
-    if (demande.statusDemande === "Demande initiée") {
+    if (demande?.statusDemande === "Demande initiée") {
       for (const sub of subDemandeFromDB) {
         if (
           sub.statusSubDemande === "En stock" ||
@@ -663,7 +663,7 @@ const annulerDemandeDemandeur = async (req, res) => {
             { statusDemande: "Demande annulé", annulerPar: fullName },
             { where: { id } }
           );
-          const demande = await demandeMUS.findOne({
+          demande = await demandeMUS.findOne({
             where: { id },
             include: [{ model: subDemandeMUS, as: "subDemandeMUS" }],
           });

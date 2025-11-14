@@ -91,15 +91,23 @@ const ajoutStock = async (req, res) => {
       idBinFromDB?.status !== "Plein" &&
       !pattern_binFromDB
     ) {
-      const pattternBinFromDB = await pattern_bin.create({
+      await pattern_bin.create({
         binId: idBinFromDB?.id,
         patternId: patternFromDB.id,
+        quantiteBin: quantiteAjouter,
       });
-      pattternBinFromDB &&
-        (await bins.update(
-          { status: "Réservé" },
-          { where: { status: "Vide", id: idBinFromDB?.id } }
-        ));
+
+      await bins.update(
+        { status: "Réservé" },
+        { where: { status: "Vide", id: idBinFromDB?.id } }
+      );
+    } else if (
+      patternFromDB &&
+      idBinFromDB?.status !== "Plein" &&
+      pattern_binFromDB
+    ) {
+      pattern_binFromDB.quantiteBin += quantiteAjouter;
+      await pattern_binFromDB.save();
     }
     if (bin_code_plein !== "") {
       await bins.update(
@@ -351,35 +359,91 @@ const ajoutStockKitLeather = async (req, res) => {
   }
 };
 
+// const getAllStock = async (req, res) => {
+//   try {
+//     const stockData = await pattern_bin.findAll({
+//       attributes: ["id", "quantiteBin"],
+//       include: [
+//         {
+//           model: pattern,
+//           attributes: [
+//             // "partNumber",
+//             "patternNumb",
+//             "site",
+//             // "projetNom",
+//             "quantite",
+//           ],
+//           as: "pattern",
+//         },
+//         {
+//           model: bins,
+//           attributes: ["bin_code"],
+//           as: "bins",
+//         },
+//       ],
+//       raw: true,
+//       order: [["id", "DESC"]],
+//     });
+
+//     const formattedData = stockData.map((item) => ({
+//       id: item.id,
+//       quantiteBin: item.quantiteBin,
+//       partNumber: item["pattern.partNumber"],
+//       patternNumb: item["pattern.patternNumb"],
+//       site: item["pattern.site"],
+//       projetNom: item["pattern.projetNom"],
+//       quantite: item["pattern.quantite"],
+//       bin_code: item["bins.bin_code"],
+//     }));
+
+//     res.status(200).json({ data: formattedData });
+//   } catch (error) {
+//     console.error("Error fetching stock:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
 const getAllStock = async (req, res) => {
   try {
-    const patternFromDB = await pattern.findAll({
-      attributes: [
-        "id",
-        "patternNumb",
-        "quantite",
-        "site",
-        [Sequelize.col("material.partNumberMaterial"), "partNumberMaterial"],
-        [Sequelize.col("gamme.partNumber"), "partNumber"],
-        [Sequelize.col("gamme.projetNom"), "projetNom"],
-      ],
+    const stockDataWithIncludes = await pattern_bin.findAll({
+      attributes: ["id", "quantiteBin"],
       include: [
         {
-          model: material,
-          attributes: [],
-          as: "material",
+          model: pattern,
+          as: "pattern",
+          attributes: ["patternNumb", "site", "quantite", "id_gamme"],
+          include: [
+            {
+              // Nested include for the gamme data
+              model: gamme,
+              as: "gamme",
+              attributes: ["partNumber", "projetNom"],
+            },
+          ],
         },
         {
-          model: gamme,
-          attributes: [],
-          as: "gamme",
+          model: bins,
+          as: "bins",
+          attributes: ["bin_code"],
         },
       ],
-      raw: true,
+      raw: true, // Flattens results using dot notation keys
       order: [["id", "DESC"]],
     });
 
-    res.status(200).json({ data: patternFromDB });
+    // Post-process the raw data to flatten the keys (e.g., 'pattern.gamme.partNumber')
+    const formattedData = stockDataWithIncludes.map((item) => ({
+      id: item.id,
+      partNumber: item["pattern.gamme.partNumber"],
+      patternNumb: item["pattern.patternNumb"],
+      site: item["pattern.site"],
+      projetNom: item["pattern.gamme.projetNom"],
+      quantite: item["pattern.quantite"],
+      quantiteBin: item.quantiteBin,
+      bin_code: item["bins.bin_code"],
+    }));
+
+    res.status(200).json({ data: formattedData });
   } catch (error) {
     console.error("Error fetching stock:", error);
     res.status(500).json({ message: "Server error" });

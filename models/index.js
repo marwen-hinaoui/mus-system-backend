@@ -94,11 +94,14 @@ bins.belongsToMany(pattern, {
   as: "pattern",
 });
 
-projet.belongsToMany(bins, {
+pattern.belongsToMany(bins, {
   through: pattern_bin,
   foreignKey: "patternId",
   otherKey: "binId",
   as: "bins",
 });
+
+pattern_bin.belongsTo(pattern, { foreignKey: "patternId", as: "pattern" });
+pattern_bin.belongsTo(bins, { foreignKey: "binId", as: "bins" });
 
 module.exports = { sequelize, userMUS, roleMUS };
