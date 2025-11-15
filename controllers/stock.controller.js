@@ -427,11 +427,10 @@ const getAllStock = async (req, res) => {
           attributes: ["bin_code"],
         },
       ],
-      raw: true, // Flattens results using dot notation keys
+      raw: true,
       order: [["id", "DESC"]],
     });
 
-    // Post-process the raw data to flatten the keys (e.g., 'pattern.gamme.partNumber')
     const formattedData = stockDataWithIncludes.map((item) => ({
       id: item.id,
       partNumber: item["pattern.gamme.partNumber"],
