@@ -6,7 +6,7 @@ const verifyTokenAndRole = require("../middleware/verifyTokenAndRole");
 router.post("/login", authController.login);
 router.post(
   "/signUp",
-  verifyTokenAndRole(["Admin"]),
+  // verifyTokenAndRole(["Admin"]),
   authController.signUp
 );
 router.post("/ref", authController.refreshAccessToken);

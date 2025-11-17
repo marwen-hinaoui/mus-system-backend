@@ -3,14 +3,15 @@ const router = express.Router();
 const verifyTokenAndRole = require("../middleware/verifyTokenAndRole");
 
 const {
-  generateBins,
   assignBinToProject,
   getBinsFromPattern,
   binsFromProjet,
   getBinsFromPatternLivree,
+  // generateBins,
+  // generateBins600,
 } = require("../controllers/bins.controller");
 
-router.post("/init", generateBins);
+// router.post("/init", generateBins);
 
 const { getMainBins } = require("../controllers/bins.controller");
 
@@ -35,6 +36,15 @@ router.get(
   binsFromProjet
 );
 
-router.post("/init", verifyTokenAndRole(["Admin"]), generateBins);
+// router.post(
+//   "/init",
+//   // verifyTokenAndRole(["Admin"]),
+//   generateBins
+// );
+// router.post(
+//   "/init/600",
+//   //  verifyTokenAndRole(["Admin"])
+//   generateBins600
+// );
 
 module.exports = router;

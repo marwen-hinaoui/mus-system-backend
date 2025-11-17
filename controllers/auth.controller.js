@@ -87,6 +87,7 @@ const login = async (req, res) => {
 const signUp = async (req, res) => {
   try {
     const salt = bcrypt.genSaltSync(10);
+    console.log(req.body);
     const hashedPassword = await bcrypt.hash(req.body.password, salt);
 
     const user = {

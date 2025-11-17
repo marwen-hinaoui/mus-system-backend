@@ -148,24 +148,39 @@ const getBinsFromPattern = async (req, res) => {
             ...binCodeCondition,
           },
         });
-        console.log("if");
+        console.log("if --------------------------------");
         console.log(binsFromDB);
       } else {
         const binIds = binLinks.map((link) => link.binId);
 
-        binsFromDB = await bins.findAll({
+        const linkedBins = await bins.findAll({
           where: {
-            id: {
-              [Op.in]: binIds,
-            },
-            status: {
-              [Op.ne]: "Plein",
-            },
+            id: { [Op.in]: binIds },
             ...binCodeCondition,
           },
         });
-        console.log("else");
-        console.log(binsFromDB);
+
+        const allBinsAreFull = linkedBins.every(
+          (bin) => bin.status === "Plein"
+        );
+
+        if (allBinsAreFull) {
+          binsFromDB = await bins.findAll({
+            where: {
+              status: { [Op.ne]: "Plein" },
+              project,
+              ...binCodeCondition,
+            },
+          });
+        } else {
+          binsFromDB = await bins.findAll({
+            where: {
+              id: { [Op.in]: binIds },
+              status: { [Op.ne]: "Plein" },
+              ...binCodeCondition,
+            },
+          });
+        }
       }
     } else {
       binsFromDB = await bins.findAll({
@@ -177,6 +192,8 @@ const getBinsFromPattern = async (req, res) => {
           ...binCodeCondition,
         },
       });
+      console.log("else 222222 --------------------------------");
+      console.log(binsFromDB);
     }
 
     res.status(200).json({ data: binsFromDB });
@@ -300,12 +317,12 @@ const assignBinToProject = async (req, res) => {
   }
 };
 
-// const generateBins = async (req, res) => {
+// const generateBins600 = async (req, res) => {
 //   try {
 //     const count = await bins.count();
-//     if (count > 0) {
-//       return res.json({ message: "Bins already initialized." });
-//     }
+//     // if (count > 0) {
+//     //   return res.json({ message: "Bins already initialized." });
+//     // }
 
 //     const groups = ["A", "B", "C", "D", "E", "F"];
 //     for (const g of groups) {
@@ -329,37 +346,38 @@ const assignBinToProject = async (req, res) => {
 //   }
 // };
 
-const generateBins = async (req, res) => {
-  try {
-    // const count = await bins.count();
-    // if (count > 0) {
-    //   return res.json({ message: "Bins already initialized." });
-    // }
+// const generateBins = async (req, res) => {
+//   try {
+//     // const count = await bins.count();
+//     // if (count > 0) {
+//     //   return res.json({ message: "Bins already initialized." });
+//     // }
 
-    const groups = ["H"];
-    for (const g of groups) {
-      for (let i = 1; i <= 2; i++) {
-        for (let j = 1; j <= 7; j++) {
-          await bins.create({
-            bin_code: `${g}${String(i).padStart(2, "0")}-${String(j).padStart(
-              2,
-              "0"
-            )}`,
-          });
-        }
-      }
-    }
-    res.json({ message: "Bins initialized successfully." });
-  } catch (err) {
-    console.log("====================================");
-    console.log(err);
-    console.log("====================================");
-    res.status(500).json({ error: err.message });
-  }
-};
+//     const groups = ["G"];
+//     for (const g of groups) {
+//       for (let i = 1; i <= 3; i++) {
+//         for (let j = 1; j <= 7; j++) {
+//           await bins.create({
+//             bin_code: `${g}${String(i).padStart(2, "0")}-${String(j).padStart(
+//               2,
+//               "0"
+//             )}`,
+//           });
+//         }
+//       }
+//     }
+//     res.json({ message: "Bins initialized successfully." });
+//   } catch (err) {
+//     console.log("====================================");
+//     console.log(err);
+//     console.log("====================================");
+//     res.status(500).json({ error: err.message });
+//   }
+// };
 
 module.exports = {
-  generateBins,
+  // generateBins,
+  // generateBins600,
   getMainBins,
   assignBinToProject,
   getBinsFromPattern,

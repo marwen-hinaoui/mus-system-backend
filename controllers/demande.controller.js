@@ -44,6 +44,7 @@ const getEmail = async (demandeProjet) => {
 
   return usersEmails;
 };
+
 const createDemande = async (req, res) => {
   const { sequence, demandeData, subDemandes = [] } = req.body;
   let countDisponible = 0;
@@ -372,8 +373,10 @@ const getDemandeById = async (req, res) => {
 };
 
 const acceptDemandeAgent = async (req, res) => {
-  const { nameButton, selectedBins } = req.body;
+  const { nameButton, selectedBins, selectedQte } = req.body;
   const { id } = req.params;
+  console.log("selectedQte -----------------------------");
+  console.log(selectedQte);
 
   const fullName = `${req.user.firstName} ${req.user.lastName}`;
   try {
@@ -399,135 +402,115 @@ const acceptDemandeAgent = async (req, res) => {
           sub.statusSubDemande === "Stock limité"
       );
 
-      if (hasProblemSub) {
-        newStatus = "Demande partiellement livrée";
-      } else {
-        newStatus = "Demande livrée";
-      }
+      newStatus = hasProblemSub
+        ? "Demande partiellement livrée"
+        : "Demande livrée";
 
       for (const sub of demande.subDemandeMUS) {
         const gammeFromDB = await gamme.findOne({
           where: { partNumber: sub.partNumber },
         });
         const materialFromDB = await material.findOne({
-          where: {
-            partNumberMaterial: sub.materialPartNumber,
-          },
+          where: { partNumberMaterial: sub.materialPartNumber },
         });
-
         const patternFromDB = await pattern.findOne({
           where: {
-            id_gamme: gammeFromDB.id,
-            patternNumb: sub.patternNumb,
+            id_gamme: gammeFromDB?.id,
+            patternNumb: sub?.patternNumb,
             id_material: materialFromDB?.id,
           },
         });
-        if (!gammeFromDB) {
-          console.log(`Gamme introuvable -> partNumber ${sub.partNumber}`);
+        if (!gammeFromDB) continue;
+
+        // If "Stock limité", we can only deliver what's available
+        let remainingQty =
+          sub.statusSubDemande === "Stock limité"
+            ? Math.min(selectedQte[sub.numSubDemande], sub?.quantiteDisponible)
+            : sub.quantite;
+
+        const selectedBinsForSub = selectedBins[sub.numSubDemande] || [];
+        if (!patternFromDB || selectedBinsForSub?.length === 0) continue;
+
+        let _binCodes = [];
+        let delivered =
+          sub.statusSubDemande === "Stock limité"
+            ? selectedQte[sub.numSubDemande]
+            : Math.min(sub.quantite, sub?.quantiteDisponible);
+
+        if (sub.statusSubDemande === "Stock limité") {
+          patternFromDB.quantite +=
+            sub?.quantiteDisponible - selectedQte[sub.numSubDemande];
         }
+        for (const binCode of selectedBinsForSub) {
+          if (remainingQty <= 0) break;
 
-        let delivered = Math.min(sub.quantite, sub?.quantiteDisponible);
-        console.log("delivered");
-        console.log(delivered);
-        if (patternFromDB) {
-          if (sub.statusSubDemande !== "Hors stock") {
-            const filterdSelectedBins = selectedBins.filter(
-              (item) => item.numSubDemande === sub.numSubDemande
-            );
-            console.log("filterdSelectedBins ////////// ");
-            console.log(filterdSelectedBins);
-            const binFromDB = await bins.findOne({
-              where: {
-                bin_code: filterdSelectedBins[0]?.bin,
-              },
+          const binFromDB = await bins.findOne({
+            where: { bin_code: binCode },
+          });
+          const patternInBins = await pattern_bin.findOne({
+            where: { binId: binFromDB?.id, patternId: patternFromDB?.id },
+          });
+          if (!patternInBins) continue;
+
+          const deliverFromBin = Math.min(
+            remainingQty,
+            patternInBins?.quantiteBin
+          );
+          patternInBins.quantiteBin -= deliverFromBin;
+          remainingQty -= deliverFromBin;
+
+          const countPatternInBins = await pattern_bin.count({
+            where: { binId: binFromDB?.id },
+          });
+
+          if (patternInBins.quantiteBin === 0 && countPatternInBins > 1) {
+            await pattern_bin.destroy({
+              where: { binId: binFromDB?.id, patternId: patternFromDB?.id },
             });
-
-            const countPatternInBins = await pattern_bin.count({
-              where: {
-                binId: binFromDB?.id,
-              },
-            });
-            console.log("countPatternInBins ////////// ");
-            console.log(countPatternInBins);
-
-            if (patternFromDB.quantite === 0 && countPatternInBins > 1) {
-              console.log("CASE  ------------------------> 1 ");
-
-              await pattern_bin.destroy({
-                where: {
-                  binId: binFromDB?.id,
-                  patternId: patternFromDB?.id,
-                },
-              });
-
-              await bins.update(
-                { status: "Réservé" },
-                {
-                  where: {
-                    bin_code: filterdSelectedBins[0]?.bin,
-                    status: "Plein",
-                  },
-                }
-              );
-            }
-            if (patternFromDB.quantite === 0 && countPatternInBins === 1) {
-              console.log("CASE  ------------------------> 2 ");
-
-              await pattern_bin.destroy({
-                where: {
-                  binId: binFromDB?.id,
-                  patternId: patternFromDB?.id,
-                },
-              });
-
-              await bins.update(
-                { status: "Vide" },
-                {
-                  where: {
-                    bin_code: filterdSelectedBins[0]?.bin,
-                    status: {
-                      [Op.in]: ["Réservé", "Plein"],
-                    },
-                  },
-                }
-              );
-            }
-            if (patternFromDB.quantite > 0) {
-              console.log("CASE  ------------------------> 3 ");
-
-              await bins.update(
-                { status: "Réservé" },
-                {
-                  where: {
-                    bin_code: filterdSelectedBins[0]?.bin,
-                    status: "Plein",
-                  },
-                }
-              );
-            }
-            await mouvementCreation(
-              demande.sequence,
-              sub.partNumber,
-              sub.patternNumb,
-              sub.materialPartNumber,
-              delivered,
-              "Livré",
-              demande.projetNom,
-              demande.id_userMUS,
-              binFromDB?.bin_code,
-              userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
+            await bins.update(
+              { status: "Réservé" },
+              { where: { bin_code: binCode, status: "Plein" } }
             );
           }
-        } else {
-          console.log(
-            `Pattern introuvable --> gamme=${gammeFromDB.id}, material=${sub.materialPartNumber}, patternNumb=${sub.patternNumb}`
-          );
+          if (patternInBins?.quantiteBin === 0 && countPatternInBins === 1) {
+            await pattern_bin.destroy({
+              where: { binId: binFromDB?.id, patternId: patternFromDB?.id },
+            });
+            await bins.update(
+              { status: "Vide" },
+              {
+                where: {
+                  bin_code: binCode,
+                  status: { [Op.in]: ["Réservé", "Plein"] },
+                },
+              }
+            );
+          }
+          if (patternInBins.quantiteBin > 0) {
+            await bins.update(
+              { status: "Réservé" },
+              { where: { bin_code: binCode, status: "Plein" } }
+            );
+          }
+
+          await patternInBins.save();
+          await patternFromDB.save();
+          _binCodes.push(binCode);
         }
+
+        await mouvementCreation(
+          demande.sequence,
+          sub.partNumber,
+          sub.patternNumb,
+          sub.materialPartNumber,
+          delivered, // actual delivered, limited by stock
+          "Livré",
+          demande.projetNom,
+          demande.id_userMUS,
+          _binCodes.join(", "),
+          userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
+        );
       }
-      res.status(200).json({
-        message: newStatus,
-        data: { id, newStatus },
-      });
     }
     if (
       demande.statusDemande == "Demande initiée" &&

@@ -6,7 +6,7 @@ const { mouvementCreation } = require("../services/mouvementStockService");
 const { getStockQuantity } = require("../services/checkStockService");
 const pattern_bin = require("../models/pattern_bin");
 const bins = require("../models/bins");
-const { userMUS } = require("../models");
+const { userMUS, sequelize } = require("../models");
 
 const ajoutStock = async (req, res) => {
   const currentUserId = req.user.id;
@@ -208,16 +208,34 @@ const ajoutStockAdmin = async (req, res) => {
       patternFromDB.quantite += quantiteAjouter;
       await patternFromDB.save();
     }
-    if (patternFromDB && idBinFromDB?.status !== "Plein") {
-      const pattternBinFromDB = await pattern_bin.create({
+    const pattern_binFromDB = await pattern_bin.findOne({
+      where: {
         binId: idBinFromDB?.id,
         patternId: patternFromDB.id,
+      },
+    });
+    if (
+      patternFromDB &&
+      idBinFromDB?.status !== "Plein" &&
+      !pattern_binFromDB
+    ) {
+      await pattern_bin.create({
+        binId: idBinFromDB?.id,
+        patternId: patternFromDB.id,
+        quantiteBin: quantiteAjouter,
       });
-      pattternBinFromDB &&
-        (await bins.update(
-          { status: "Réservé" },
-          { where: { status: "Vide", id: idBinFromDB?.id } }
-        ));
+
+      await bins.update(
+        { status: "Réservé" },
+        { where: { status: "Vide", id: idBinFromDB?.id } }
+      );
+    } else if (
+      patternFromDB &&
+      idBinFromDB?.status !== "Plein" &&
+      pattern_binFromDB
+    ) {
+      pattern_binFromDB.quantiteBin += quantiteAjouter;
+      await pattern_binFromDB.save();
     }
     if (bin_code_plein !== "") {
       await bins.update(
@@ -318,16 +336,34 @@ const ajoutStockKitLeather = async (req, res) => {
       patternFromDB.quantite += quantiteAjouter;
       await patternFromDB.save();
     }
-    if (patternFromDB && idBinFromDB?.status !== "Plein") {
-      const pattternBinFromDB = await pattern_bin.create({
+    const pattern_binFromDB = await pattern_bin.findOne({
+      where: {
         binId: idBinFromDB?.id,
         patternId: patternFromDB.id,
+      },
+    });
+    if (
+      patternFromDB &&
+      idBinFromDB?.status !== "Plein" &&
+      !pattern_binFromDB
+    ) {
+      await pattern_bin.create({
+        binId: idBinFromDB?.id,
+        patternId: patternFromDB.id,
+        quantiteBin: quantiteAjouter,
       });
-      pattternBinFromDB &&
-        (await bins.update(
-          { status: "Réservé" },
-          { where: { status: "Vide", id: idBinFromDB?.id } }
-        ));
+
+      await bins.update(
+        { status: "Réservé" },
+        { where: { status: "Vide", id: idBinFromDB?.id } }
+      );
+    } else if (
+      patternFromDB &&
+      idBinFromDB?.status !== "Plein" &&
+      pattern_binFromDB
+    ) {
+      pattern_binFromDB.quantiteBin += quantiteAjouter;
+      await pattern_binFromDB.save();
     }
     if (bin_code_plein !== "") {
       await bins.update(
@@ -403,10 +439,69 @@ const ajoutStockKitLeather = async (req, res) => {
 //   }
 // };
 
+// const getAllStock = async (req, res) => {
+//   try {
+//     const stockDataWithIncludes = await pattern_bin.findAll({
+//       attributes: [
+//         "id",
+//         "quantiteBin",
+//         "id_pattern", // make sure this foreign key is included
+//         [
+//           sequelize.literal(`(
+//             SELECT SUM(pb2.quantiteBin)
+//             FROM pattern_bin AS pb2
+//             WHERE pb2.id_pattern = pattern_bin.id_pattern
+//           )`),
+//           "totalQuantiteBin",
+//         ],
+//       ],
+//       include: [
+//         {
+//           model: pattern,
+//           as: "pattern",
+//           attributes: ["patternNumb", "site", "quantite", "id_gamme"],
+//           include: [
+//             {
+//               model: gamme,
+//               as: "gamme",
+//               attributes: ["partNumber", "projetNom"],
+//             },
+//           ],
+//         },
+//         {
+//           model: bins,
+//           as: "bins",
+//           attributes: ["bin_code"],
+//         },
+//       ],
+//       raw: true,
+//       order: [["id", "DESC"]],
+//     });
+
+//     const formattedData = stockDataWithIncludes.map((item) => ({
+//       id: item.id,
+//       partNumber: item["pattern.gamme.partNumber"],
+//       patternNumb: item["pattern.patternNumb"],
+//       site: item["pattern.site"],
+//       projetNom: item["pattern.gamme.projetNom"],
+//       quantite: item["pattern.quantite"],
+//       quantiteBin: item.quantiteBin,
+//       totalQuantiteBin: item.totalQuantiteBin,
+//       bin_code: item["bins.bin_code"],
+//     }));
+
+//     res.status(200).json({ data: formattedData });
+//   } catch (error) {
+//     console.error("Error fetching stock:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
 const getAllStock = async (req, res) => {
   try {
+    // First get all stock data
     const stockDataWithIncludes = await pattern_bin.findAll({
-      attributes: ["id", "quantiteBin"],
+      attributes: ["id", "quantiteBin", "patternId"],
       include: [
         {
           model: pattern,
@@ -414,7 +509,6 @@ const getAllStock = async (req, res) => {
           attributes: ["patternNumb", "site", "quantite", "id_gamme"],
           include: [
             {
-              // Nested include for the gamme data
               model: gamme,
               as: "gamme",
               attributes: ["partNumber", "projetNom"],
@@ -431,6 +525,23 @@ const getAllStock = async (req, res) => {
       order: [["id", "DESC"]],
     });
 
+    // Then get the sums for each pattern
+    const patternSums = await pattern_bin.findAll({
+      attributes: [
+        "patternId",
+        [sequelize.fn("SUM", sequelize.col("quantiteBin")), "totalQuantiteBin"],
+      ],
+      group: ["patternId"],
+      raw: true,
+    });
+
+    // Create a lookup map for pattern sums
+    const sumMap = {};
+    patternSums.forEach((item) => {
+      sumMap[item.patternId] = item.totalQuantiteBin;
+    });
+
+    // Format the data with the sums
     const formattedData = stockDataWithIncludes.map((item) => ({
       id: item.id,
       partNumber: item["pattern.gamme.partNumber"],
@@ -439,6 +550,7 @@ const getAllStock = async (req, res) => {
       projetNom: item["pattern.gamme.projetNom"],
       quantite: item["pattern.quantite"],
       quantiteBin: item.quantiteBin,
+      totalQuantiteBin: sumMap[item.patternId] || 0,
       bin_code: item["bins.bin_code"],
     }));
 
@@ -448,7 +560,6 @@ const getAllStock = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
 const checkStock = async (req, res) => {
   const { partNumber, patternNumb } = req.body;
   console.log("req.body:", req.body);
@@ -482,23 +593,71 @@ const getPatterns = async (req, res) => {
     res.status(404).json({ message: " Part number introuvable" });
   }
 };
+// const updateStock = async (req, res) => {
+//   const { idStock, qteAjour } = req.body;
+
+//   try {
+//     await pattern.update(
+//       {
+//         quantite: qteAjour,
+//       },
+//       {
+//         where: { id: idStock },
+//       }
+//     );
+//     res.status(200).json({ message: "Quantité à jour" });
+//   } catch (error) {
+//     console.log(error);
+
+//     return res.status(500).json({ message: "Server error" });
+//   }
+// };
+
 const updateStock = async (req, res) => {
   const { idStock, qteAjour } = req.body;
 
   try {
-    await pattern.update(
-      {
-        quantite: qteAjour,
-      },
-      {
-        where: { id: idStock },
-      }
+    const updated = await pattern_bin.update(
+      { quantiteBin: qteAjour },
+      { where: { id: idStock } }
     );
-    res.status(200).json({ message: "Quantité à jour" });
-  } catch (error) {
-    console.log(error);
 
-    return res.status(500).json({ message: "Server error" });
+    if (!updated[0]) {
+      return res.status(404).json({ message: "Qte n'est pas changé" });
+    }
+    if (qteAjour === 0) {
+      return res.status(400).json({ message: "Qte n'est pas changé" });
+    }
+
+    const bin = await pattern_bin.findOne({
+      where: { id: idStock },
+      attributes: ["patternId", "binId"],
+      raw: true,
+    });
+
+    const patternId = bin?.patternId;
+    const binId = bin?.binId;
+
+    const sumResult = await pattern_bin.findAll({
+      attributes: [
+        [sequelize.fn("SUM", sequelize.col("quantiteBin")), "totalQuantiteBin"],
+      ],
+      where: { patternId },
+      raw: true,
+    });
+
+    const newTotal = Number(sumResult[0].totalQuantiteBin) || 0;
+
+    await pattern.update({ quantite: newTotal }, { where: { id: patternId } });
+
+    res.status(200).json({
+      message: "Quantité à jour",
+      patternId,
+      totalQuantiteBin: newTotal,
+    });
+  } catch (error) {
+    console.error("Error update", error);
+    res.status(500).json({ message: "Server error" });
   }
 };
 
