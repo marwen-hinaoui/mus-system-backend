@@ -22,6 +22,19 @@ const zplToPrintPnQte = (text, qte, date) => {
         ^XZ
         `;
 };
+const zplToPrintBIN = (text) => {
+  return `
+
+^XA
+^FO0,55
+^A0N,100,100
+^FB550,1,0,C,0
+^FD${text}^FS
+
+^XZ
+
+        `;
+};
 
 function printZebra(zpl) {
   const PRINTER_IP = "10.50.68.70";
@@ -273,7 +286,7 @@ const getRebuildLivree = async (req, res) => {
 
 const testPrinter = async (req, res) => {
   try {
-    await printZebra(zplToPrintPnQte("L002661082FBJAH", 10, "2025-10-10"));
+    await printZebra(zplToPrintBIN("A01-01"));
     res.status(200).json({
       data: "succes",
     });

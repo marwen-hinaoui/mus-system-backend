@@ -7,6 +7,7 @@ const {
   getBinsFromPattern,
   binsFromProjet,
   getBinsFromPatternLivree,
+  getAllBins,
   // generateBins,
   // generateBins600,
 } = require("../controllers/bins.controller");
@@ -34,6 +35,11 @@ router.get(
   "/:project/not/:bin_code/:id_user",
   verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   binsFromProjet
+);
+router.get(
+  "/getall",
+  // verifyTokenAndRole(["Admin", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
+  getAllBins
 );
 
 // router.post(

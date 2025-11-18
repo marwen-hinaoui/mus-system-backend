@@ -51,6 +51,21 @@ const createDemande = async (req, res) => {
 
   const userFromDB = await userMUS.findByPk(demandeData.id_userMUS);
 
+  if (userFromDB?.id_site === 1) {
+    if (demandeData.projetNom === "D-CROSS") {
+      return res.status(403).json({ message: "Project non autorisé" });
+    } else if (demandeData.projetNom === "773W") {
+      return res.status(403).json({ message: "Project non autorisé" });
+    }
+  }
+  if (userFromDB?.id_site === 2) {
+    if (demandeData.projetNom === "MBEAM") {
+      return res.status(403).json({ message: "Project non autorisé" });
+    } else if (demandeData.projetNom === "N-CAR") {
+      return res.status(403).json({ message: "Project non autorisé" });
+    }
+  }
+
   try {
     const subDemandePreview = [];
 
@@ -197,7 +212,7 @@ const comfirmDemande = async (req, res) => {
           where: {
             id_gamme: gammeFromDB.id,
             patternNumb: sub.patternNumb,
-            id_material: materialFromDB.id,
+            id_material: materialFromDB?.id,
             site: userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield",
           },
         });
@@ -407,111 +422,116 @@ const acceptDemandeAgent = async (req, res) => {
         : "Demande livrée";
 
       for (const sub of demande.subDemandeMUS) {
-        const gammeFromDB = await gamme.findOne({
-          where: { partNumber: sub.partNumber },
-        });
-        const materialFromDB = await material.findOne({
-          where: { partNumberMaterial: sub.materialPartNumber },
-        });
-        const patternFromDB = await pattern.findOne({
-          where: {
-            id_gamme: gammeFromDB?.id,
-            patternNumb: sub?.patternNumb,
-            id_material: materialFromDB?.id,
-          },
-        });
-        if (!gammeFromDB) continue;
-
-        // If "Stock limité", we can only deliver what's available
-        let remainingQty =
-          sub.statusSubDemande === "Stock limité"
-            ? Math.min(selectedQte[sub.numSubDemande], sub?.quantiteDisponible)
-            : sub.quantite;
-
-        const selectedBinsForSub = selectedBins[sub.numSubDemande] || [];
-        if (!patternFromDB || selectedBinsForSub?.length === 0) continue;
-
-        let _binCodes = [];
-        let delivered =
-          sub.statusSubDemande === "Stock limité"
-            ? selectedQte[sub.numSubDemande]
-            : Math.min(sub.quantite, sub?.quantiteDisponible);
-
-        if (sub.statusSubDemande === "Stock limité") {
-          patternFromDB.quantite +=
-            sub?.quantiteDisponible - selectedQte[sub.numSubDemande];
-        }
-        for (const binCode of selectedBinsForSub) {
-          if (remainingQty <= 0) break;
-
-          const binFromDB = await bins.findOne({
-            where: { bin_code: binCode },
+        if (sub.statusSubDemande !== "Hors stock") {
+          const gammeFromDB = await gamme.findOne({
+            where: { partNumber: sub.partNumber },
           });
-          const patternInBins = await pattern_bin.findOne({
-            where: { binId: binFromDB?.id, patternId: patternFromDB?.id },
+          const materialFromDB = await material.findOne({
+            where: { partNumberMaterial: sub.materialPartNumber },
           });
-          if (!patternInBins) continue;
+          const patternFromDB = await pattern.findOne({
+            where: {
+              id_gamme: gammeFromDB?.id,
+              patternNumb: sub?.patternNumb,
+              id_material: materialFromDB?.id,
+            },
+          });
+          if (!gammeFromDB) continue;
 
-          const deliverFromBin = Math.min(
-            remainingQty,
-            patternInBins?.quantiteBin
+          let remainingQty =
+            sub.statusSubDemande === "Stock limité"
+              ? Math.min(
+                  selectedQte[sub.numSubDemande],
+                  sub?.quantiteDisponible
+                )
+              : sub.quantite;
+
+          const selectedBinsForSub = selectedBins[sub.numSubDemande] || [];
+          if (!patternFromDB || selectedBinsForSub?.length === 0) continue;
+
+          let _binCodes = [];
+          let delivered =
+            sub.statusSubDemande === "Stock limité"
+              ? selectedQte[sub.numSubDemande]
+              : Math.min(sub.quantite, sub?.quantiteDisponible);
+
+          if (sub.statusSubDemande === "Stock limité") {
+            patternFromDB.quantite +=
+              sub?.quantiteDisponible - selectedQte[sub.numSubDemande];
+          }
+          for (const binCode of selectedBinsForSub) {
+            if (remainingQty <= 0) break;
+
+            const binFromDB = await bins.findOne({
+              where: { bin_code: binCode },
+            });
+            const patternInBins = await pattern_bin.findOne({
+              where: { binId: binFromDB?.id, patternId: patternFromDB?.id },
+            });
+            if (!patternInBins) continue;
+
+            const deliverFromBin = Math.min(
+              remainingQty,
+              patternInBins?.quantiteBin
+            );
+            patternInBins.quantiteBin -= deliverFromBin;
+            remainingQty -= deliverFromBin;
+
+            const countPatternInBins = await pattern_bin.count({
+              where: { binId: binFromDB?.id },
+            });
+
+            if (patternInBins.quantiteBin === 0 && countPatternInBins > 1) {
+              await pattern_bin.destroy({
+                where: { binId: binFromDB?.id, patternId: patternFromDB?.id },
+              });
+              await bins.update(
+                { status: "Réservé" },
+                { where: { bin_code: binCode, status: "Plein" } }
+              );
+            }
+            if (patternInBins?.quantiteBin === 0 && countPatternInBins === 1) {
+              await pattern_bin.destroy({
+                where: { binId: binFromDB?.id, patternId: patternFromDB?.id },
+              });
+              await bins.update(
+                { status: "Vide" },
+                {
+                  where: {
+                    bin_code: binCode,
+                    status: { [Op.in]: ["Réservé", "Plein"] },
+                  },
+                }
+              );
+            }
+            if (patternInBins.quantiteBin > 0) {
+              await bins.update(
+                { status: "Réservé" },
+                { where: { bin_code: binCode, status: "Plein" } }
+              );
+            }
+
+            await patternInBins.save();
+            await patternFromDB.save();
+            _binCodes.push(binCode);
+          }
+
+          await mouvementCreation(
+            demande.sequence,
+            sub.partNumber,
+            sub.patternNumb,
+            sub.materialPartNumber,
+            delivered, // actual delivered, limited by stock
+            "Livré",
+            demande.projetNom,
+            demande.id_userMUS,
+            _binCodes.join(", "),
+            userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
           );
-          patternInBins.quantiteBin -= deliverFromBin;
-          remainingQty -= deliverFromBin;
-
-          const countPatternInBins = await pattern_bin.count({
-            where: { binId: binFromDB?.id },
-          });
-
-          if (patternInBins.quantiteBin === 0 && countPatternInBins > 1) {
-            await pattern_bin.destroy({
-              where: { binId: binFromDB?.id, patternId: patternFromDB?.id },
-            });
-            await bins.update(
-              { status: "Réservé" },
-              { where: { bin_code: binCode, status: "Plein" } }
-            );
-          }
-          if (patternInBins?.quantiteBin === 0 && countPatternInBins === 1) {
-            await pattern_bin.destroy({
-              where: { binId: binFromDB?.id, patternId: patternFromDB?.id },
-            });
-            await bins.update(
-              { status: "Vide" },
-              {
-                where: {
-                  bin_code: binCode,
-                  status: { [Op.in]: ["Réservé", "Plein"] },
-                },
-              }
-            );
-          }
-          if (patternInBins.quantiteBin > 0) {
-            await bins.update(
-              { status: "Réservé" },
-              { where: { bin_code: binCode, status: "Plein" } }
-            );
-          }
-
-          await patternInBins.save();
-          await patternFromDB.save();
-          _binCodes.push(binCode);
         }
-
-        await mouvementCreation(
-          demande.sequence,
-          sub.partNumber,
-          sub.patternNumb,
-          sub.materialPartNumber,
-          delivered, // actual delivered, limited by stock
-          "Livré",
-          demande.projetNom,
-          demande.id_userMUS,
-          _binCodes.join(", "),
-          userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
-        );
       }
     }
+
     if (
       demande.statusDemande == "Demande initiée" &&
       nameButton == "Accepter"
@@ -520,22 +540,22 @@ const acceptDemandeAgent = async (req, res) => {
         { statusDemande: newStatus, accepterPar: fullName },
         { where: { id } }
       );
-      // delete redis[`expiry:${demande.id}`];
+      delete redis[`expiry:${demande.id}`];
 
-      // const emails = await getEmail(demande.projetNom);
-      // for (let index = 0; index < emails.length; index++) {
-      //   const element = emails[index];
-      //   await sendEmail({
-      //     to: element,
-      //     subject: `Status demande:  ${newStatus} - ${demande.numDemande}`,
-      //     html: `
-      //         <h3>Status demande: ${newStatus}</h3>
-      //         <p>Numéro de demande: <b>${demande.numDemande}</b></p>
-      //         <h4>Détails:</h4>
-      //         ${buildTable(demande.subDemandeMUS)}
-      //          `,
-      //   });
-      // }
+      const emails = await getEmail(demande.projetNom);
+      for (let index = 0; index < emails.length; index++) {
+        const element = emails[index];
+        await sendEmail({
+          to: element,
+          subject: `Status demande:  ${newStatus} - ${demande.numDemande}`,
+          html: `
+              <h3>Status demande: ${newStatus}</h3>
+              <p>Numéro de demande: <b>${demande.numDemande}</b></p>
+              <h4>Détails:</h4>
+              ${buildTable(demande.subDemandeMUS)}
+               `,
+        });
+      }
       res.status(200).json({
         message: newStatus,
         data: { id, newStatus },
@@ -558,20 +578,20 @@ const acceptDemandeAgent = async (req, res) => {
         { statusDemande: newStatus, livreePar: fullName },
         { where: { id } }
       );
-      // const emails = await getEmail(demande.projetNom);
-      // for (let index = 0; index < emails.length; index++) {
-      //   const element = emails[index];
-      //   await sendEmail({
-      //     to: element,
-      //     subject: `Status demande:  ${newStatus} - ${demande.numDemande}`,
-      //     html: `
-      //         <h3>Status demande: ${newStatus}</h3>
-      //         <p>Numéro de demande: <b>${demande.numDemande}</b></p>
-      //         <h4>Détails:</h4>
-      //         ${buildTable(demande.subDemandeMUS)}
-      //          `,
-      //   });
-      // }
+      const emails = await getEmail(demande.projetNom);
+      for (let index = 0; index < emails.length; index++) {
+        const element = emails[index];
+        await sendEmail({
+          to: element,
+          subject: `Status demande:  ${newStatus} - ${demande.numDemande}`,
+          html: `
+              <h3>Status demande: ${newStatus}</h3>
+              <p>Numéro de demande: <b>${demande.numDemande}</b></p>
+              <h4>Détails:</h4>
+              ${buildTable(demande.subDemandeMUS)}
+               `,
+        });
+      }
       res.status(200).json({
         message: newStatus,
         data: { id, newStatus },

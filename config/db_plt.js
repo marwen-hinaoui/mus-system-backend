@@ -1,9 +1,9 @@
 const sql = require("mssql");
 
 const _config = {
-  user: "admin",
-  password: "777777",
-  server: "localhost",
+  user: "plt_viewer-user",
+  password: "Azerty.12345**",
+  server: "tnbzt-sql01",
   database: "plt_viewer",
   options: {
     encrypt: true,

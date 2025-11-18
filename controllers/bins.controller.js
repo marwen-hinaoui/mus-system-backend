@@ -102,6 +102,8 @@ const getBinsFromPattern = async (req, res) => {
     console.log("getBinsFromPattern  | id_site -------->", userFromDB?.id_site);
 
     if (userFromDB?.id_site === 2) {
+      console.log("222222222222222222222222222222222222222222222222");
+
       if (project === "D-CROSS") {
         binCodeCondition = {
           bin_code: {
@@ -114,8 +116,14 @@ const getBinsFromPattern = async (req, res) => {
             [Op.like]: "H%",
           },
         };
+      } else {
+        binCodeCondition = {
+          id: null,
+        };
       }
     } else {
+      console.log("11111111111111111111111111111111111111111111111111111");
+
       binCodeCondition = {
         bin_code: {
           [Op.and]: [{ [Op.notLike]: "G%" }, { [Op.notLike]: "H%" }],
@@ -138,19 +146,7 @@ const getBinsFromPattern = async (req, res) => {
       const binLinks = await pattern_bin.findAll({
         where: { patternId: patternFromDB.id },
       });
-      if (binLinks.length === 0) {
-        binsFromDB = await bins.findAll({
-          where: {
-            status: {
-              [Op.ne]: "Plein",
-            },
-            project,
-            ...binCodeCondition,
-          },
-        });
-        console.log("if --------------------------------");
-        console.log(binsFromDB);
-      } else {
+      if (binLinks.length > 0) {
         const binIds = binLinks.map((link) => link.binId);
 
         const linkedBins = await bins.findAll({
@@ -181,6 +177,18 @@ const getBinsFromPattern = async (req, res) => {
             },
           });
         }
+      } else {
+        binsFromDB = await bins.findAll({
+          where: {
+            status: {
+              [Op.ne]: "Plein",
+            },
+            project,
+            ...binCodeCondition,
+          },
+        });
+        console.log("if --------------------------------");
+        console.log(binsFromDB);
       }
     } else {
       binsFromDB = await bins.findAll({
@@ -194,6 +202,8 @@ const getBinsFromPattern = async (req, res) => {
       });
       console.log("else 222222 --------------------------------");
       console.log(binsFromDB);
+      console.log("else binCodeCondition --------------------------------");
+      console.log(binCodeCondition);
     }
 
     res.status(200).json({ data: binsFromDB });
@@ -317,6 +327,17 @@ const assignBinToProject = async (req, res) => {
   }
 };
 
+const getAllBins = async (req, res) => {
+  try {
+    const _bins = await bins.findAll({
+      order: [["bin_code", "ASC"]],
+    });
+    res.status(200).json({ data: _bins });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // const generateBins600 = async (req, res) => {
 //   try {
 //     const count = await bins.count();
@@ -379,6 +400,7 @@ module.exports = {
   // generateBins,
   // generateBins600,
   getMainBins,
+  getAllBins,
   assignBinToProject,
   getBinsFromPattern,
   binsFromProjet,
