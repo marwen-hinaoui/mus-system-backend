@@ -64,7 +64,7 @@ const getBinsFromPatternLivree = async (req, res) => {
 
     if (patternFromDB) {
       const binLinks = await pattern_bin.findAll({
-        where: { patternId: patternFromDB.id },
+        where: { patternId: patternFromDB.id, gammeId: gammeFromDB.id },
         include: [
           {
             model: bins,
@@ -76,6 +76,8 @@ const getBinsFromPatternLivree = async (req, res) => {
           },
         ],
       });
+      console.log(" +++++++++++++++++++ binLinks +++++++++++++++++++");
+      console.log(binLinks);
 
       binsFromDB = binLinks.map((link) => ({
         binId: link.binId,
@@ -84,6 +86,9 @@ const getBinsFromPatternLivree = async (req, res) => {
         status: link.bins.status,
       }));
     }
+
+    console.log(" +++++++++++++++++++ binsFromDB +++++++++++++++++++");
+    console.log(binsFromDB);
 
     res.status(200).json({ data: binsFromDB });
   } catch (error) {
@@ -102,8 +107,6 @@ const getBinsFromPattern = async (req, res) => {
     console.log("getBinsFromPattern  | id_site -------->", userFromDB?.id_site);
 
     if (userFromDB?.id_site === 2) {
-      console.log("222222222222222222222222222222222222222222222222");
-
       if (project === "D-CROSS") {
         binCodeCondition = {
           bin_code: {
@@ -122,8 +125,6 @@ const getBinsFromPattern = async (req, res) => {
         };
       }
     } else {
-      console.log("11111111111111111111111111111111111111111111111111111");
-
       binCodeCondition = {
         bin_code: {
           [Op.and]: [{ [Op.notLike]: "G%" }, { [Op.notLike]: "H%" }],
@@ -132,35 +133,35 @@ const getBinsFromPattern = async (req, res) => {
     }
 
     let binsFromDB = [];
-    let patternFromDB;
     const gammeFromDB = await gamme.findOne({
       where: { partNumber },
     });
 
     if (gammeFromDB) {
-      patternFromDB = await pattern.findOne({
-        where: { patternNumb: _pattern, id_gamme: gammeFromDB.id },
-      });
-    }
-    if (patternFromDB) {
       const binLinks = await pattern_bin.findAll({
-        where: { patternId: patternFromDB.id },
+        where: {
+          //  patternId: patternFromDB.id,
+          gammeId: gammeFromDB.id,
+        },
       });
       if (binLinks.length > 0) {
         const binIds = binLinks.map((link) => link.binId);
 
-        const linkedBins = await bins.findAll({
+        const linkedBin = await bins.findOne({
           where: {
             id: { [Op.in]: binIds },
             ...binCodeCondition,
           },
         });
 
-        const allBinsAreFull = linkedBins.every(
-          (bin) => bin.status === "Plein"
+        console.log(
+          "linkedBin",
+          linkedBin,
+          "linkedBin.status : ",
+          linkedBin.status
         );
 
-        if (allBinsAreFull) {
+        if (linkedBin.status === "Plein") {
           binsFromDB = await bins.findAll({
             where: {
               status: { [Op.ne]: "Plein" },
@@ -171,7 +172,7 @@ const getBinsFromPattern = async (req, res) => {
         } else {
           binsFromDB = await bins.findAll({
             where: {
-              id: { [Op.in]: binIds },
+              id: linkedBin.id,
               status: { [Op.ne]: "Plein" },
               ...binCodeCondition,
             },

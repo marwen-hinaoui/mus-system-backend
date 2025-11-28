@@ -13,6 +13,7 @@ const rebuildService = async (pn, patternData, stockData) => {
       quantity: p.quantity,
       available,
       possible,
+      type: p.type,
       missing,
     };
   });

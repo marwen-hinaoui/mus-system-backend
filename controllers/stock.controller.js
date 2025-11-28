@@ -1,9 +1,10 @@
 const gamme = require("../models/gamme");
 const pattern = require("../models/pattern");
 const material = require("../models/material");
-const { Sequelize } = require("sequelize");
 const { mouvementCreation } = require("../services/mouvementStockService");
 const { getStockQuantity } = require("../services/checkStockService");
+const getPatternsSQL = require("../middleware/sqlQuery");
+const getProjetService = require("../services/getProjetService");
 const pattern_bin = require("../models/pattern_bin");
 const bins = require("../models/bins");
 const { userMUS, sequelize } = require("../models");
@@ -20,9 +21,13 @@ const ajoutStock = async (req, res) => {
       projetNom,
       partNumberMaterial,
       partNumberMateriaDescription,
+      Emetteur,
       bin_code, // Old bin : will be Plein
       bin_code_plein, // New bin
     } = req.body;
+
+    console.log("emetteur ----------------------");
+    console.log(Emetteur);
 
     const userFromDB = await userMUS.findByPk(id_userMUS);
 
@@ -95,6 +100,7 @@ const ajoutStock = async (req, res) => {
         binId: idBinFromDB?.id,
         patternId: patternFromDB.id,
         quantiteBin: quantiteAjouter,
+        gammeId: gammeFromDB?.id,
       });
 
       await bins.update(
@@ -125,6 +131,8 @@ const ajoutStock = async (req, res) => {
       projetNom,
       currentUserId,
       bin_code_plein !== "" ? bin_code_plein : bin_code,
+      "N/A",
+      Emetteur,
       userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
     );
     return res.status(200).json({
@@ -150,6 +158,7 @@ const ajoutStockAdmin = async (req, res) => {
       projetNom,
       partNumberMaterial,
       partNumberMateriaDescription,
+      Emetteur,
       bin_code, // Old bin : will be Plein
       bin_code_plein, // New bin
       id_userMUS,
@@ -223,6 +232,7 @@ const ajoutStockAdmin = async (req, res) => {
         binId: idBinFromDB?.id,
         patternId: patternFromDB.id,
         quantiteBin: quantiteAjouter,
+        gammeId: gammeFromDB?.id,
       });
 
       await bins.update(
@@ -253,6 +263,8 @@ const ajoutStockAdmin = async (req, res) => {
       projetNom,
       currentUserId,
       bin_code_plein !== "" ? bin_code_plein : bin_code,
+      "N/A",
+      Emetteur,
       userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
     );
     return res.status(200).json({
@@ -278,6 +290,8 @@ const ajoutStockKitLeather = async (req, res) => {
       projetNom,
       partNumberMaterial,
       partNumberMateriaDescription,
+      Emetteur,
+
       bin_code, // Old bin : will be Plein
       bin_code_plein, // New bin
       id_userMUS,
@@ -351,6 +365,7 @@ const ajoutStockKitLeather = async (req, res) => {
         binId: idBinFromDB?.id,
         patternId: patternFromDB.id,
         quantiteBin: quantiteAjouter,
+        gammeId: gammeFromDB?.id,
       });
 
       await bins.update(
@@ -381,6 +396,8 @@ const ajoutStockKitLeather = async (req, res) => {
       projetNom,
       currentUserId,
       bin_code_plein !== "" ? bin_code_plein : bin_code,
+      "N/A",
+      Emetteur,
       userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
     );
     return res.status(200).json({
@@ -540,7 +557,6 @@ const getAllStock = async (req, res) => {
     patternSums.forEach((item) => {
       sumMap[item.patternId] = item.totalQuantiteBin;
     });
-
     // Format the data with the sums
     const formattedData = stockDataWithIncludes.map((item) => ({
       id: item.id,
@@ -560,6 +576,7 @@ const getAllStock = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
 const checkStock = async (req, res) => {
   const { partNumber, patternNumb } = req.body;
   console.log("req.body:", req.body);
@@ -593,6 +610,7 @@ const getPatterns = async (req, res) => {
     res.status(404).json({ message: " Part number introuvable" });
   }
 };
+
 // const updateStock = async (req, res) => {
 //   const { idStock, qteAjour } = req.body;
 
@@ -662,60 +680,135 @@ const updateStock = async (req, res) => {
 };
 
 const checkMassiveStock = async (req, res) => {
-  const { dataQte } = req.body;
+  const { dataQte, id_userMUS } = req.body;
 
   if (!Array.isArray(dataQte) || dataQte.length === 0) {
-    return res.status(400).json({ message: "data must be  not empty!" });
+    return res.status(400).json({ message: "data must be not empty!" });
   }
+  const userFromDB = await userMUS.findByPk(id_userMUS);
 
   const results = [];
 
   try {
     for (const element of dataQte) {
       try {
-        const gammeFromDB = await gamme.findOne({
-          where: { partNumber: element.partNumber },
-        });
+        let gammeFromDB;
+        let patternFromDB;
+        let site_id = element.site === "Greenfield" ? 1 : 2;
+        let elementProject = await getProjetService(element.partNumber);
+        console.log("------------------ SITE : ", site_id);
+        console.log("------------------ USER SITE ID  : ", userFromDB?.id_site);
+        console.log("------------------ PROJECT : ", elementProject);
 
-        if (!gammeFromDB) {
-          results.push({
-            partNumber: element.partNumber,
-            pattern: element.patternNumb,
-            updated: false,
-            reason: "gamme not found",
-          });
-          continue;
-        }
+        const checkGammeFromCMS = await getPatternsSQL(element.partNumber);
 
-        const patternFromDB = await pattern.findOne({
-          where: {
-            id_gamme: gammeFromDB.id,
-            patternNumb: element.patternNumb,
-          },
-        });
+        if (checkGammeFromCMS.recordset.length > 0) {
+          const patternExists = checkGammeFromCMS.recordset.some(
+            (record) => record.panel_number === element.patternNumb
+          );
 
-        if (!patternFromDB) {
-          results.push({
-            partNumber: element.partNumber,
-            pattern: element.patternNumb,
-            updated: false,
-          });
-          continue;
-        }
+          if (patternExists === true) {
+            const binsFromDB = await bins.findOne({
+              where: { bin_code: element.bin_code },
+            });
 
-        if (Number(patternFromDB.quantite) !== Number(element.quantite)) {
-          results.push({
-            partNumber: element.partNumber,
-            pattern: element.patternNumb,
-            updated: true,
-            qteChangement: [patternFromDB.quantite, Number(element.quantite)],
-          });
+            if (binsFromDB) {
+              if (userFromDB?.id_site === site_id) {
+                if (
+                  (["MBEAM", "N-CAR"].includes(elementProject) &&
+                    userFromDB?.site === "Greenfield") ||
+                  (["773W", "D-CROSS"].includes(elementProject) &&
+                    userFromDB?.site === "Brownfield")
+                ) {
+                  gammeFromDB = await gamme.findOne({
+                    where: { partNumber: element.partNumber },
+                  });
+
+                  if (gammeFromDB) {
+                    
+                  } else {
+                    if (element.qteBin > 0) {
+                        // STILL TESTING FOR FALSE CASES
+                    } else {
+                      results.push({
+                        partNumber: element.partNumber,
+                        pattern: element.patternNumb,
+                        site: element.site,
+                        bin_code: element.bin_code,
+                        qteBin: element.quantiteBin,
+                        updated: false,
+                        warning: false,
+                        reason: "PN not exist and new qte <= 0",
+                      });
+                    }
+                  }
+                } else {
+                  results.push({
+                    partNumber: element.partNumber,
+                    pattern: element.patternNumb,
+                    site: element.site,
+                    bin_code: element.bin_code,
+                    qteBin: element.quantiteBin,
+                    updated: false,
+                    warning: false,
+                    reason: "Projet non autoriser dans votre site",
+                  });
+                  continue;
+                }
+              } else {
+                results.push({
+                  partNumber: element.partNumber,
+                  pattern: element.patternNumb,
+                  site: element.site,
+                  bin_code: element.bin_code,
+                  qteBin: element.quantiteBin,
+                  updated: false,
+                  warning: false,
+                  reason: "Site non autoriser",
+                });
+                continue;
+              }
+            } else {
+              results.push({
+                partNumber: element.partNumber,
+                pattern: element.patternNumb,
+                site: element.site,
+                bin_code: element.bin_code,
+                qteBin: element.quantiteBin,
+                updated: false,
+                warning: false,
+
+                reason: "Bin not existe",
+              });
+              continue;
+            }
+          } else {
+            results.push({
+              partNumber: element.partNumber,
+              pattern: element.patternNumb,
+              site: element.site,
+              bin_code: element.bin_code,
+              qteBin: element.quantiteBin,
+              updated: false,
+              warning: false,
+
+              reason: "Pattern not existe",
+            });
+            continue;
+          }
         } else {
           results.push({
             partNumber: element.partNumber,
             pattern: element.patternNumb,
+            site: element.site,
+            bin_code: element.bin_code,
+            qteBin: element.quantiteBin,
             updated: false,
+            warning: false,
+
+            reason: "PN not existe",
           });
+          continue;
         }
       } catch (error) {
         console.log("Error updating element:", element, error);
@@ -728,11 +821,11 @@ const checkMassiveStock = async (req, res) => {
     }
 
     const updated = results.filter((r) => r.updated).length;
-    const finalResult = results.filter((r) => r.updated);
+    // const finalResult = results.filter((r) => r.updated);
     res.status(200).json({
       message: "Check process completed",
       updated,
-      details: finalResult,
+      details: results,
     });
   } catch (error) {
     console.error("Massive update error:", error);
@@ -742,6 +835,7 @@ const checkMassiveStock = async (req, res) => {
     });
   }
 };
+
 const updateMassiveStock = async (req, res) => {
   const { dataQte } = req.body;
 
@@ -829,6 +923,7 @@ const updateMassiveStock = async (req, res) => {
     });
   }
 };
+
 module.exports = {
   ajoutStock,
   getAllStock,

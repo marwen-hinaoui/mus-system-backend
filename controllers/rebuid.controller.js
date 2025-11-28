@@ -65,6 +65,10 @@ const rebuildGamme = async (req, res) => {
       });
 
       const patternData = await getPatternsSQL(element.partNumber);
+      console.log(
+        "patternData         *************************************",
+        patternData
+      );
 
       const resultFromRebuilService = await rebuildService(
         element.partNumber,

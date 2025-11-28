@@ -11,6 +11,8 @@ const mouvementCreation = async (
   projetNom,
   id_userMUS,
   bin_code,
+  numDemande,
+  Emetteur,
   site
 ) => {
   try {
@@ -22,6 +24,8 @@ const mouvementCreation = async (
     const newMouvement = await mouvementStock.create({
       sequence,
       partNumber,
+      Emetteur,
+      numDemande,
       patternNumb,
       partNumberMaterial,
       quantite,

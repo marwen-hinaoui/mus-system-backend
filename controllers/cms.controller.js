@@ -30,7 +30,7 @@ const getPNFromKitLeather = async (req, res) => {
       `SELECT TOP 1 [part_number_cover]
         FROM [plt_viewer].[dbo].[files]
         WHERE [semi_finished_good_part_number] = '${kit_leather_pn}'
-        ORDER BY [updated_at] DESC;`
+      `
     );
 
     res.json(result.recordset);
@@ -70,6 +70,7 @@ const getMaterial = async (req, res) => {
     res.status(500).send("Error fetching getProjet");
   }
 };
+
 const getPatterns = async (req, res) => {
   const { cover_pn } = req.params;
 

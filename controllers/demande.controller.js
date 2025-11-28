@@ -526,6 +526,8 @@ const acceptDemandeAgent = async (req, res) => {
             demande.projetNom,
             demande.id_userMUS,
             _binCodes.join(", "),
+            demande.numDemande,
+            "N/A",
             userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
           );
         }

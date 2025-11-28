@@ -46,6 +46,14 @@ const mouvementStock = sequelize.define(
       type: DataTypes.STRING(33),
       allowNull: false,
     },
+    Emetteur: {
+      type: DataTypes.STRING(55),
+      allowNull: false,
+    },
+    numDemande: {
+      type: DataTypes.STRING(13),
+      allowNull: false,
+    },
     bin_code: {
       type: DataTypes.STRING(33),
       allowNull: false,

@@ -5,8 +5,9 @@ const pattern_bin = sequelize.define(
   "pattern_bin",
   {
     id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-    binId: { type: DataTypes.INTEGER, primaryKey: true },
-    patternId: { type: DataTypes.INTEGER, primaryKey: true },
+    binId: { type: DataTypes.INTEGER, allowNull: false },
+    patternId: { type: DataTypes.INTEGER, allowNull: false },
+    gammeId: { type: DataTypes.INTEGER, allowNull: false },
     quantiteBin: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
   },
   {
