@@ -5,9 +5,11 @@ const { mouvementCreation } = require("../services/mouvementStockService");
 const { getStockQuantity } = require("../services/checkStockService");
 const getPatternsSQL = require("../middleware/sqlQuery");
 const getProjetService = require("../services/getProjetService");
+const getMaterialService = require("../services/getMaterialService");
 const pattern_bin = require("../models/pattern_bin");
 const bins = require("../models/bins");
 const { userMUS, sequelize } = require("../models");
+const updatePatternQuantite_SumService = require("../services/updatePatternQuantite_SumService");
 
 const ajoutStock = async (req, res) => {
   const currentUserId = req.user.id;
@@ -77,7 +79,7 @@ const ajoutStock = async (req, res) => {
         patternNumb,
         quantite: quantiteAjouter,
         id_gamme: gammeFromDB.id,
-        partNumberMaterial: materialFromDB.partNumberMaterial,
+
         id_material: materialFromDB.id,
         site: userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield",
       });
@@ -209,7 +211,7 @@ const ajoutStockAdmin = async (req, res) => {
         patternNumb,
         quantite: quantiteAjouter,
         id_gamme: gammeFromDB.id,
-        partNumberMaterial: materialFromDB.partNumberMaterial,
+
         id_material: materialFromDB.id,
         site: userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield",
       });
@@ -342,7 +344,7 @@ const ajoutStockKitLeather = async (req, res) => {
         patternNumb,
         quantite: quantiteAjouter,
         id_gamme: gammeFromDB.id,
-        partNumberMaterial: materialFromDB.partNumberMaterial,
+
         id_material: materialFromDB.id,
         site: userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield",
       });
@@ -635,26 +637,26 @@ const updateStock = async (req, res) => {
   const { idStock, qteAjour } = req.body;
 
   try {
-    const updated = await pattern_bin.update(
-      { quantiteBin: qteAjour },
-      { where: { id: idStock } }
-    );
-
-    if (!updated[0]) {
-      return res.status(404).json({ message: "Qte n'est pas changé" });
+    if (qteAjour > 0) {
+      const updated = await pattern_bin.update(
+        { quantiteBin: qteAjour },
+        { where: { id: idStock } }
+      );
     }
-    if (qteAjour === 0) {
+
+    if (qteAjour < 0) {
       return res.status(400).json({ message: "Qte n'est pas changé" });
     }
 
     const bin = await pattern_bin.findOne({
       where: { id: idStock },
-      attributes: ["patternId", "binId"],
+      attributes: ["patternId", "binId", "gammeId"],
       raw: true,
     });
 
     const patternId = bin?.patternId;
-    const binId = bin?.binId;
+    const _binId = bin?.binId;
+    const _gammeId = bin?.gammeId;
 
     const sumResult = await pattern_bin.findAll({
       attributes: [
@@ -667,6 +669,33 @@ const updateStock = async (req, res) => {
     const newTotal = Number(sumResult[0].totalQuantiteBin) || 0;
 
     await pattern.update({ quantite: newTotal }, { where: { id: patternId } });
+
+    if (qteAjour === 0) {
+      await pattern_bin.destroy({
+        where: {
+          id: idStock,
+        },
+      });
+
+      const pattern_bin_length = await pattern_bin.findAll({
+        where: {
+          binId: _binId,
+        },
+      });
+      const bin_code_db = await bins.findOne({
+        where: {
+          id: _binId,
+        },
+      });
+      if (pattern_bin_length.length === 0) {
+        bin_code_db.status = "Vide";
+        await bin_code_db.save();
+      }
+    }
+    const { patternUpdated, totalQuantite } =
+      await updatePatternQuantite_SumService(patternId, _gammeId);
+    console.log("Is pattern updated?", patternUpdated);
+    console.log("Total quantite after update:", totalQuantite);
 
     res.status(200).json({
       message: "Quantité à jour",
@@ -686,142 +715,432 @@ const checkMassiveStock = async (req, res) => {
     return res.status(400).json({ message: "data must be not empty!" });
   }
   const userFromDB = await userMUS.findByPk(id_userMUS);
-
+  const seen = new Set();
   const results = [];
 
   try {
     for (const element of dataQte) {
       try {
+        const key = `${element.partNumber.trim()}__${element.patternNumb.trim()}`;
+        if (seen.has(key)) {
+          results.push({
+            partNumber: element.partNumber?.trim(),
+            pattern: element.patternNumb?.trim(),
+            site: element.site?.trim(),
+            projetNom: element.projetNom?.trim(),
+            bin_code: element.bin_code?.trim(),
+            quantiteBin: Number(element.quantiteBin?.trim()),
+            updated: false,
+            reasonPN: "Pattern dupliqué",
+          });
+          continue;
+        }
+
+        seen.add(key);
+        const excelBinDest = element.bin_code_distination?.trim() || "";
+        const excelEmetteur = element.emetteur?.trim() || "";
         let gammeFromDB;
         let patternFromDB;
+        let bin_code_db;
+        let bin_code_distination_db = null;
         let site_id = element.site === "Greenfield" ? 1 : 2;
         let elementProject = await getProjetService(element.partNumber);
-        console.log("------------------ SITE : ", site_id);
-        console.log("------------------ USER SITE ID  : ", userFromDB?.id_site);
-        console.log("------------------ PROJECT : ", elementProject);
 
         const checkGammeFromCMS = await getPatternsSQL(element.partNumber);
 
         if (checkGammeFromCMS.recordset.length > 0) {
           const patternExists = checkGammeFromCMS.recordset.some(
-            (record) => record.panel_number === element.patternNumb
+            (record) => record.panel_number === element.patternNumb?.trim()
           );
 
           if (patternExists === true) {
-            const binsFromDB = await bins.findOne({
-              where: { bin_code: element.bin_code },
+            bin_code_db = await bins.findOne({
+              where: { bin_code: element.bin_code?.trim() },
             });
 
-            if (binsFromDB) {
+            if (excelBinDest !== "") {
+              bin_code_distination_db = await bins.findOne({
+                where: { bin_code: excelBinDest },
+              });
+            }
+
+            if (excelBinDest !== "" && !bin_code_distination_db) {
+              results.push({
+                partNumber: element.partNumber?.trim(),
+                pattern: element.patternNumb?.trim(),
+                site: element.site?.trim(),
+                projetNom: element.projetNom?.trim(),
+                bin_code: element.bin_code?.trim(),
+                quantiteBin: Number(element.quantiteBin?.trim()),
+                bin_code_distination: excelBinDest,
+                updated: false,
+                reasonBin: "Bin de destination incorrect",
+              });
+              continue;
+            }
+
+            if (bin_code_db) {
               if (userFromDB?.id_site === site_id) {
                 if (
                   (["MBEAM", "N-CAR"].includes(elementProject) &&
-                    userFromDB?.site === "Greenfield") ||
+                    userFromDB?.id_site === 1) ||
                   (["773W", "D-CROSS"].includes(elementProject) &&
-                    userFromDB?.site === "Brownfield")
+                    userFromDB?.id_site === 2)
                 ) {
-                  gammeFromDB = await gamme.findOne({
-                    where: { partNumber: element.partNumber },
-                  });
+                  if (
+                    ["MBEAM", "N-CAR"].includes(element.projetNom?.trim()) ||
+                    ["773W", "D-CROSS"].includes(element.projetNom?.trim())
+                  ) {
+                    gammeFromDB = await gamme.findOne({
+                      where: { partNumber: element.partNumber?.trim() },
+                    });
 
-                  if (gammeFromDB) {
-                    
-                  } else {
-                    if (element.qteBin > 0) {
-                        // STILL TESTING FOR FALSE CASES
-                    } else {
-                      results.push({
-                        partNumber: element.partNumber,
-                        pattern: element.patternNumb,
-                        site: element.site,
-                        bin_code: element.bin_code,
-                        qteBin: element.quantiteBin,
-                        updated: false,
-                        warning: false,
-                        reason: "PN not exist and new qte <= 0",
+                    if (gammeFromDB) {
+                      patternFromDB = await pattern.findOne({
+                        where: {
+                          id_gamme: gammeFromDB.id,
+                          patternNumb: element.patternNumb?.trim(),
+                        },
                       });
+
+                      if (patternFromDB) {
+                        const pattern_bin_db = await pattern_bin.findOne({
+                          where: {
+                            gammeId: gammeFromDB?.id,
+                            patternId: patternFromDB?.id,
+                            binId: bin_code_db?.id,
+                          },
+                        });
+                        let pattern_bin_db_check;
+
+                        if (bin_code_distination_db?.id) {
+                          pattern_bin_db_check = await pattern_bin.findOne({
+                            where: {
+                              gammeId: gammeFromDB.id,
+                              patternId: patternFromDB.id,
+                              binId: bin_code_distination_db.id,
+                            },
+                          });
+                        }
+
+                        if (bin_code_db) {
+                          if (Number(element.quantiteBin?.trim()) >= 0) {
+                            if (
+                              Number(pattern_bin_db?.quantiteBin) !==
+                                Number(element.quantiteBin?.trim()) &&
+                              !pattern_bin_db_check &&
+                              bin_code_distination_db?.bin_code !==
+                                bin_code_db?.bin_code &&
+                              excelBinDest !== ""
+                            ) {
+                              if (Number(element.quantiteBin?.trim()) > 0) {
+                                results.push({
+                                  partNumber: element.partNumber?.trim(),
+                                  pattern: element.patternNumb?.trim(),
+                                  updated: true,
+                                  bin_code: bin_code_db?.bin_code,
+                                  bin_code_distination:
+                                    bin_code_distination_db?.bin_code,
+                                  updatedBin: true,
+                                  updatedQte: true,
+                                  quantiteBin: Number(
+                                    element.quantiteBin?.trim()
+                                  ),
+                                  qteChangement: [
+                                    pattern_bin_db?.quantiteBin,
+                                    Number(element.quantiteBin?.trim()),
+                                  ],
+                                  projetNom: element.projetNom?.trim(),
+                                  site: element.site?.trim(),
+                                  binChangement: [
+                                    bin_code_db?.bin_code,
+                                    bin_code_distination_db?.bin_code,
+                                  ],
+                                });
+                              } else {
+                                results.push({
+                                  partNumber: element.partNumber?.trim(),
+                                  pattern: element.patternNumb?.trim(),
+                                  site: element.site?.trim(),
+                                  bin_code: element.bin_code?.trim(),
+                                  quantiteBin: Number(
+                                    element.quantiteBin?.trim()
+                                  ),
+                                  projetNom: element.projetNom?.trim(),
+                                  site: element.site?.trim(),
+                                  binChangement: [
+                                    bin_code_db?.bin_code,
+                                    bin_code_distination_db?.bin_code,
+                                  ],
+                                  updated: false,
+                                  reasonQTE: "Impossible de migrer qte 0",
+                                  projetNom: element.projetNom?.trim(),
+                                });
+                                continue;
+                              }
+                            } else {
+                              if (
+                                bin_code_distination_db?.bin_code !==
+                                  bin_code_db?.bin_code &&
+                                !pattern_bin_db_check &&
+                                excelBinDest !== ""
+                              ) {
+                                results.push({
+                                  partNumber: element.partNumber?.trim(),
+                                  pattern: element.patternNumb?.trim(),
+                                  updated: true,
+                                  quantiteBin: Number(
+                                    element.quantiteBin?.trim()
+                                  ),
+                                  bin_code: bin_code_db?.bin_code,
+                                  bin_code_distination:
+                                    bin_code_distination_db?.bin_code,
+                                  projetNom: element.projetNom?.trim(),
+                                  site: element.site?.trim(),
+                                  updatedBin: true,
+                                  binChangement: [
+                                    bin_code_db?.bin_code,
+                                    bin_code_distination_db?.bin_code,
+                                  ],
+                                });
+                              } else {
+                                if (
+                                  Number(pattern_bin_db?.quantiteBin) !==
+                                    Number(element.quantiteBin?.trim()) &&
+                                  Number(element.quantiteBin?.trim()) >= 0 &&
+                                  !pattern_bin_db_check
+                                ) {
+                                  results.push({
+                                    partNumber: element.partNumber?.trim(),
+                                    pattern: element.patternNumb?.trim(),
+                                    updated: true,
+                                    bin_code: bin_code_db?.bin_code,
+                                    bin_code_distination:
+                                      bin_code_distination_db?.bin_code,
+                                    bin_code: element.bin_code?.trim(),
+                                    projetNom: element.projetNom?.trim(),
+                                    updatedQte: true,
+                                    quantiteBin: Number(
+                                      element.quantiteBin?.trim()
+                                    ),
+                                    site: element.site?.trim(),
+                                    qteChangement: [
+                                      pattern_bin_db?.quantiteBin,
+                                      Number(element.quantiteBin?.trim()),
+                                    ],
+                                  });
+                                }
+                              }
+                            }
+                          } else {
+                            results.push({
+                              partNumber: element.partNumber?.trim(),
+                              pattern: element.patternNumb?.trim(),
+                              site: element.site?.trim(),
+                              bin_code: element.bin_code?.trim(),
+                              quantiteBin: Number(element.quantiteBin?.trim()),
+                              updated: false,
+                              reasonQTE: "qte < 0",
+                              projetNom: element.projetNom?.trim(),
+                            });
+                            continue;
+                          }
+                        } else {
+                          results.push({
+                            partNumber: element.partNumber?.trim(),
+                            pattern: element.patternNumb?.trim(),
+                            site: element.site?.trim(),
+                            bin_code: element.bin_code?.trim(),
+                            quantiteBin: Number(element.quantiteBin?.trim()),
+                            updated: false,
+                            reasonPN: "Bin de stockage incorrect",
+                            projetNom: element.projetNom?.trim(),
+                          });
+                          continue;
+                        }
+                      } else {
+                        // Pattern doesn't exist - check emetteur FIRST
+                        if (
+                          !excelEmetteur ||
+                          excelEmetteur.trim().length === 0
+                        ) {
+                          results.push({
+                            partNumber: element.partNumber?.trim(),
+                            pattern: element.patternNumb?.trim(),
+                            site: element.site?.trim(),
+                            bin_code: element.bin_code?.trim(),
+                            quantiteBin: Number(element.quantiteBin?.trim()),
+                            updated: false,
+                            reasonEmetteur: "Emetteur obligatoire!",
+                            projetNom: element.projetNom?.trim(),
+                            emetteur: excelEmetteur, // Include empty emetteur
+                          });
+                          continue;
+                        }
+
+                        if (Number(element.quantiteBin?.trim()) <= 0) {
+                          results.push({
+                            partNumber: element.partNumber?.trim(),
+                            pattern: element.patternNumb?.trim(),
+                            site: element.site?.trim(),
+                            bin_code: element.bin_code?.trim(),
+                            quantiteBin: Number(element.quantiteBin?.trim()),
+                            updated: false,
+                            reasonPN: "PN not exist and new qte <= 0",
+                            projetNom: element.projetNom?.trim(),
+                          });
+                          continue;
+                        }
+
+                        results.push({
+                          projetNom: element.projetNom?.trim(),
+                          partNumber: element.partNumber?.trim(),
+                          pattern: element.patternNumb?.trim(),
+                          site: element.site?.trim(),
+                          bin_code: element.bin_code?.trim(),
+                          quantiteBin: Number(element.quantiteBin?.trim()),
+                          updated: true,
+                          newPattern: true,
+                          emetteur: excelEmetteur.trim(), // Always include trimmed emetteur
+                        });
+                      }
+                    } else {
+                      // Gamme doesn't exist - check emetteur
+                      if (!excelEmetteur || excelEmetteur.trim().length === 0) {
+                        results.push({
+                          partNumber: element.partNumber?.trim(),
+                          pattern: element.patternNumb?.trim(),
+                          site: element.site?.trim(),
+                          bin_code: element.bin_code?.trim(),
+                          quantiteBin: Number(element.quantiteBin?.trim()),
+                          updated: false,
+                          reasonEmetteur: "Emetteur obligatoire!",
+                          projetNom: element.projetNom?.trim(),
+                          emetteur: excelEmetteur, // Include empty emetteur
+                        });
+                        continue;
+                      }
+
+                      if (Number(element.quantiteBin?.trim()) <= 0) {
+                        results.push({
+                          partNumber: element.partNumber?.trim(),
+                          pattern: element.patternNumb?.trim(),
+                          site: element.site?.trim(),
+                          bin_code: element.bin_code?.trim(),
+                          quantiteBin: Number(element.quantiteBin?.trim()),
+                          updated: false,
+                          reasonPN: "PN not exist and new qte <= 0",
+                          projetNom: element.projetNom?.trim(),
+                        });
+                        continue;
+                      } else {
+                        results.push({
+                          projetNom: element.projetNom?.trim(),
+                          partNumber: element.partNumber?.trim(),
+                          pattern: element.patternNumb?.trim(),
+                          site: element.site?.trim(),
+                          bin_code: element.bin_code?.trim(),
+                          quantiteBin: Number(element.quantiteBin?.trim()),
+                          updated: true,
+                          newPattern: true,
+                          emetteur: excelEmetteur.trim(), // Always include trimmed emetteur
+                        });
+                      }
                     }
+                  } else {
+                    results.push({
+                      partNumber: element.partNumber?.trim(),
+                      projetNom: element.projetNom?.trim(),
+                      pattern: element.patternNumb?.trim(),
+                      site: element.site?.trim(),
+                      bin_code: element.bin_code?.trim(),
+                      quantiteBin: Number(element.quantiteBin?.trim()),
+                      updated: false,
+                      reasonProjet: "Projet incorrect",
+                    });
+                    continue;
                   }
                 } else {
                   results.push({
-                    partNumber: element.partNumber,
-                    pattern: element.patternNumb,
-                    site: element.site,
-                    bin_code: element.bin_code,
-                    qteBin: element.quantiteBin,
+                    partNumber: element.partNumber?.trim(),
+                    projetNom: element.projetNom?.trim(),
+                    pattern: element.patternNumb?.trim(),
+                    site: element.site?.trim(),
+                    bin_code: element.bin_code?.trim(),
+                    quantiteBin: Number(element.quantiteBin?.trim()),
                     updated: false,
-                    warning: false,
-                    reason: "Projet non autoriser dans votre site",
+                    reasonProjet: "Projet non autoriser dans votre site",
                   });
                   continue;
                 }
               } else {
                 results.push({
-                  partNumber: element.partNumber,
-                  pattern: element.patternNumb,
-                  site: element.site,
-                  bin_code: element.bin_code,
-                  qteBin: element.quantiteBin,
+                  partNumber: element.partNumber?.trim(),
+                  pattern: element.patternNumb?.trim(),
+                  site: element.site?.trim(),
+                  projetNom: element.projetNom?.trim(),
+                  bin_code: element.bin_code?.trim(),
+                  quantiteBin: Number(element.quantiteBin?.trim()),
                   updated: false,
-                  warning: false,
-                  reason: "Site non autoriser",
+                  reasonSite: "Site non autoriser",
                 });
                 continue;
               }
             } else {
               results.push({
-                partNumber: element.partNumber,
-                pattern: element.patternNumb,
-                site: element.site,
-                bin_code: element.bin_code,
-                qteBin: element.quantiteBin,
+                projetNom: element.projetNom?.trim(),
+                partNumber: element.partNumber?.trim(),
+                pattern: element.patternNumb?.trim(),
+                site: element.site?.trim(),
+                bin_code: element.bin_code?.trim(),
+                quantiteBin: Number(element.quantiteBin?.trim()),
                 updated: false,
-                warning: false,
-
-                reason: "Bin not existe",
+                reasonBin: "Bin not existe",
               });
               continue;
             }
           } else {
             results.push({
-              partNumber: element.partNumber,
-              pattern: element.patternNumb,
-              site: element.site,
-              bin_code: element.bin_code,
-              qteBin: element.quantiteBin,
+              partNumber: element.partNumber?.trim(),
+              pattern: element.patternNumb?.trim(),
+              site: element.site?.trim(),
+              bin_code: element.bin_code?.trim(),
+              quantiteBin: Number(element.quantiteBin?.trim()),
               updated: false,
-              warning: false,
-
-              reason: "Pattern not existe",
+              reasonPattern: "Pattern not existe",
+              projetNom: element.projetNom?.trim(),
             });
             continue;
           }
         } else {
           results.push({
-            partNumber: element.partNumber,
-            pattern: element.patternNumb,
-            site: element.site,
-            bin_code: element.bin_code,
-            qteBin: element.quantiteBin,
+            partNumber: element.partNumber?.trim(),
+            projetNom: element.projetNom?.trim(),
+            pattern: element.patternNumb?.trim(),
+            site: element.site?.trim(),
+            bin_code: element.bin_code?.trim(),
+            quantiteBin: Number(element.quantiteBin?.trim()),
             updated: false,
-            warning: false,
-
-            reason: "PN not existe",
+            reasonPN: "PN not existe",
           });
           continue;
         }
       } catch (error) {
         console.log("Error updating element:", element, error);
         results.push({
-          partNumber: element.partNumber,
-          pattern: element.patternNumb,
+          partNumber: element.partNumber?.trim(),
+          pattern: element.patternNumb?.trim(),
+          projetNom: element.projetNom?.trim(),
+          site: element.site?.trim(),
           updated: false,
+          bin_code: element.bin_code?.trim(),
+          quantiteBin: Number(element.quantiteBin?.trim()),
+          error: error.message,
         });
       }
     }
 
     const updated = results.filter((r) => r.updated).length;
-    // const finalResult = results.filter((r) => r.updated);
     res.status(200).json({
       message: "Check process completed",
       updated,
@@ -837,72 +1156,267 @@ const checkMassiveStock = async (req, res) => {
 };
 
 const updateMassiveStock = async (req, res) => {
-  const { dataQte } = req.body;
+  const { dataQte, id_userMUS } = req.body;
 
   if (!Array.isArray(dataQte) || dataQte.length === 0) {
     return res
       .status(400)
       .json({ message: "dataQte must be a non-empty array" });
   }
+  const userFromDB = await userMUS.findByPk(id_userMUS);
 
   const results = [];
 
   try {
     for (const element of dataQte) {
+      console.log(
+        "element.bin_code?.trim() ///////////////////////////////////////",
+        typeof element.bin_code?.trim()
+      );
+
       try {
-        const gammeFromDB = await gamme.findOne({
-          where: { partNumber: element.partNumber },
-        });
+        let bin_code_db;
+        let bin_code_distination_db;
+        let gammeFromDB;
+        let patternFromDB;
+        const excelEmetteur = element.emetteur?.trim() || "";
 
-        if (!gammeFromDB) {
-          results.push({
-            partNumber: element.partNumber,
-            pattern: element.patternNumb,
-            updated: false,
-            reason: "gamme not found",
+        if (element.bin_code) {
+          bin_code_db = await bins.findOne({
+            where: {
+              bin_code: element.bin_code?.trim() || "",
+            },
           });
-          continue;
         }
 
-        const patternFromDB = await pattern.findOne({
-          where: {
-            id_gamme: gammeFromDB.id,
-            patternNumb: element.patternNumb,
-          },
-        });
-
-        if (!patternFromDB) {
-          results.push({
-            partNumber: element.partNumber,
-            pattern: element.patternNumb,
-            updated: false,
+        if (element.bin_code_distination) {
+          bin_code_distination_db = await bins.findOne({
+            where: {
+              bin_code: element.bin_code_distination?.trim() || "",
+            },
           });
-          continue;
         }
 
-        if (Number(patternFromDB.quantite) !== Number(element.quantite)) {
-          patternFromDB.quantite = element.quantite;
-          await patternFromDB.save();
+        gammeFromDB = await gamme.findOne({
+          where: { partNumber: element.partNumber?.trim() || "" },
+        });
 
+        if (element.newPattern && excelEmetteur !== "") {
+          if (!gammeFromDB) {
+            gammeFromDB = await gamme.create({
+              sequence: "N/A",
+              partNumber: element.partNumber?.trim() || "",
+              projetNom: element.projetNom?.trim() || "",
+            });
+          }
+
+          let materialFromService = await getMaterialService(
+            element.partNumber?.trim(),
+            element.pattern?.trim()
+          );
+
+          let materialFromDB = null;
+          if (materialFromService) {
+            materialFromDB = await material.findOne({
+              where: {
+                partNumberMaterial: materialFromService.part_number_material,
+              },
+            });
+
+            if (!materialFromDB) {
+              materialFromDB = await material.create({
+                partNumberMaterial: materialFromService.part_number_material,
+                partNumberMateriaDescription:
+                  element.partNumberMateriaDescription || null,
+              });
+            }
+          }
+
+          patternFromDB = await pattern.create({
+            patternNumb: element.pattern?.trim() || "",
+            quantite: Number(element.quantiteBin) || 0,
+            id_gamme: gammeFromDB?.id,
+            id_material: materialFromDB?.id,
+            site: element.site || "Greenfield",
+          });
+
+          if (bin_code_db && gammeFromDB && patternFromDB) {
+            const quantiteBin = Number(element.quantiteBin);
+            if (isNaN(quantiteBin)) {
+              throw new Error(
+                `Invalid quantiteBin value: ${element.quantiteBin}`
+              );
+            }
+
+            await pattern_bin.create({
+              gammeId: gammeFromDB.id,
+              patternId: patternFromDB.id,
+              binId: bin_code_db.id,
+              quantiteBin: quantiteBin,
+            });
+
+            bin_code_db.status = "Réservé";
+            await bin_code_db.save();
+          }
+          console.log(
+            "-------------------------- excelEmetteur -----------------------------",
+            excelEmetteur
+          );
+
+          await mouvementCreation(
+            "N/A",
+            gammeFromDB.partNumber,
+            patternFromDB.patternNumb,
+            materialFromService.part_number_material,
+            Number(element.quantiteBin),
+            "Introduite",
+            gammeFromDB.projetNom,
+            id_userMUS,
+            bin_code_db?.bin_code,
+            "N/A",
+            excelEmetteur,
+            userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
+          );
           results.push({
-            partNumber: element.partNumber,
-            pattern: element.patternNumb,
+            partNumber: element.partNumber?.trim() || "",
+            pattern: element.pattern?.trim() || "",
             updated: true,
-            oldQuantity: patternFromDB.quantite,
-            newQuantity: element.quantite,
+            message: "New pattern created successfully",
           });
         } else {
-          results.push({
-            partNumber: element.partNumber,
-            pattern: element.patternNumb,
-            updated: false,
+          patternFromDB = await pattern.findOne({
+            where: {
+              id_gamme: gammeFromDB?.id,
+              patternNumb: element.pattern?.trim() || "",
+            },
           });
         }
+
+        if (
+          element.updatedBin &&
+          bin_code_db &&
+          gammeFromDB &&
+          patternFromDB &&
+          bin_code_distination_db
+        ) {
+          await pattern_bin.destroy({
+            where: {
+              patternId: patternFromDB.id,
+              gammeId: gammeFromDB.id,
+              binId: bin_code_db.id,
+            },
+          });
+
+          const quantiteBin = Number(element.quantiteBin);
+          if (isNaN(quantiteBin)) {
+            throw new Error(
+              `Invalid quantiteBin value: ${element.quantiteBin}`
+            );
+          }
+
+          await pattern_bin.create({
+            gammeId: gammeFromDB.id,
+            patternId: patternFromDB.id,
+            binId: bin_code_distination_db.id,
+            quantiteBin: quantiteBin,
+          });
+
+          if (
+            bin_code_distination_db.status === "Plein" ||
+            bin_code_distination_db.status === "Vide"
+          ) {
+            bin_code_distination_db.status = "Réservé";
+            await bin_code_distination_db.save();
+          }
+
+          const pattern_bin_length = await pattern_bin.findAll({
+            where: {
+              binId: bin_code_db.id,
+            },
+          });
+
+          console.log(" ----- pattern_bin_length -------", pattern_bin_length);
+
+          if (pattern_bin_length.length > 0) {
+            if (bin_code_db.status === "Plein") {
+              bin_code_db.status = "Réservé";
+            }
+          } else {
+            bin_code_db.status = "Vide";
+          }
+          await bin_code_db.save();
+          results.push({
+            partNumber: element.partNumber?.trim() || "",
+            pattern: element.pattern?.trim() || "",
+            updated: true,
+            message: "Bin updated successfully",
+          });
+        }
+
+        if (element.updatedQte && bin_code_db && gammeFromDB && patternFromDB) {
+          const pattern_bin_qte = await pattern_bin.findOne({
+            where: {
+              gammeId: gammeFromDB.id,
+              patternId: patternFromDB.id,
+              binId: bin_code_db.id,
+            },
+          });
+
+          if (pattern_bin_qte) {
+            const quantiteBin = Number(element.quantiteBin);
+            console.log(element.quantiteBin);
+
+            if (quantiteBin > 0) {
+              pattern_bin_qte.quantiteBin = quantiteBin;
+              await pattern_bin_qte.save();
+            } else {
+              await pattern_bin.destroy({
+                where: {
+                  patternId: patternFromDB.id,
+                  gammeId: gammeFromDB.id,
+                  binId: bin_code_db.id,
+                },
+              });
+
+              const pattern_bin_length_qte = await pattern_bin.findAll({
+                where: {
+                  binId: bin_code_db?.id,
+                },
+              });
+
+              if (pattern_bin_length_qte.length === 0) {
+                bin_code_db.status = "Vide";
+                await bin_code_db.save();
+              }
+            }
+
+            const { patternUpdated, totalQuantite } =
+              await updatePatternQuantite_SumService(
+                patternFromDB?.id,
+                gammeFromDB?.id
+              );
+            console.log("Is pattern updated?", patternUpdated);
+            console.log("Total quantite after update:", totalQuantite);
+          }
+          results.push({
+            partNumber: element.partNumber?.trim() || "",
+            pattern: element.pattern?.trim() || "",
+            updated: true,
+            message: "Quantity updated successfully",
+          });
+          continue;
+        }
+        results.push({
+          partNumber: element.partNumber?.trim() || "",
+          pattern: element.pattern?.trim() || "",
+          updated: false,
+          message: "No action taken - check element properties",
+        });
       } catch (error) {
         console.log("Error updating element:", element, error);
         results.push({
-          partNumber: element.partNumber,
-          pattern: element.patternNumb,
+          partNumber: element.partNumber?.trim(),
+          pattern: element.pattern?.trim(),
           updated: false,
         });
       }

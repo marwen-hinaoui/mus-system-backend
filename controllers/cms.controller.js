@@ -3,6 +3,7 @@ const fs = require("fs");
 const { getPool } = require("../config/db_plt");
 const getPatternsSQL = require("../middleware/sqlQuery");
 const getProjetService = require("../services/getProjetService");
+const getMaterialService = require("../services/getMaterialService");
 
 const getPNFromSequences = async (req, res) => {
   const { sequence } = req.params;
@@ -57,14 +58,10 @@ const getMaterial = async (req, res) => {
   const { cover_pn, panel_number } = req.params;
 
   try {
-    const pool = await getPool();
-    const result = await pool
-      .request()
-      .query(
-        `SELECT [part_number_material] FROM [plt_viewer].[dbo].[files] WHERE [part_number_cover] = '${cover_pn}' AND [panel_number] = '${panel_number}'`
-      );
+    let material = await getMaterialService(cover_pn, panel_number);
+    console.log(material);
 
-    res.json(result.recordset[0]);
+    res.json(material);
   } catch (err) {
     console.error("Error in getProjet:", err);
     res.status(500).send("Error fetching getProjet");
