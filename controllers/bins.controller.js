@@ -100,9 +100,11 @@ const getBinsFromPatternLivree = async (req, res) => {
 const getBinsFromPattern = async (req, res) => {
   try {
     const { partNumber, _pattern, id_user } = req.params;
+    // Assuming userMUS is defined elsewhere and has findByPk method
     const userFromDB = await userMUS.findByPk(id_user);
 
     let binCodeCondition = {};
+    // Assuming getProjetService is defined elsewhere
     const project = await getProjetService(partNumber);
     console.log("getBinsFromPattern  | id_site -------->", userFromDB?.id_site);
 
@@ -121,7 +123,7 @@ const getBinsFromPattern = async (req, res) => {
         };
       } else {
         binCodeCondition = {
-          id: null,
+          id: null, // Ensures no bins are returned if project doesn't match
         };
       }
     } else {
@@ -133,6 +135,7 @@ const getBinsFromPattern = async (req, res) => {
     }
 
     let binsFromDB = [];
+    // Assuming gamme, pattern_bin, and bins models are defined elsewhere
     const gammeFromDB = await gamme.findOne({
       where: { partNumber },
     });
@@ -140,28 +143,34 @@ const getBinsFromPattern = async (req, res) => {
     if (gammeFromDB) {
       const binLinks = await pattern_bin.findAll({
         where: {
-          //  patternId: patternFromDB.id,
           gammeId: gammeFromDB.id,
         },
       });
+
       if (binLinks.length > 0) {
         const binIds = binLinks.map((link) => link.binId);
 
-        const linkedBin = await bins.findOne({
+        // --- CHANGE START ---
+        // Use findAll to get all matching linked bins
+        const linkedBins = await bins.findAll({
           where: {
             id: { [Op.in]: binIds },
             ...binCodeCondition,
           },
         });
 
-        console.log(
-          "linkedBin",
-          linkedBin,
-          "linkedBin.status : ",
-          linkedBin.status
-        );
+        console.log("linkedBins count:", linkedBins.length);
 
-        if (linkedBin.status === "Plein") {
+        // Filter linked bins to find those that are NOT full
+        const availableLinkedBins = linkedBins.filter(b => b.status !== "Plein");
+
+        if (availableLinkedBins.length > 0) {
+          // If at least one linked bin is available, return only those specific bins
+          binsFromDB = availableLinkedBins;
+        } else {
+          // If ALL linked bins are "Plein" (or none match the binCodeCondition),
+          // fall back to finding any non-full bin for the project as a general option
+          console.log("All linked bins are full. Falling back to general project bins.");
           binsFromDB = await bins.findAll({
             where: {
               status: { [Op.ne]: "Plein" },
@@ -169,16 +178,11 @@ const getBinsFromPattern = async (req, res) => {
               ...binCodeCondition,
             },
           });
-        } else {
-          binsFromDB = await bins.findAll({
-            where: {
-              id: linkedBin.id,
-              status: { [Op.ne]: "Plein" },
-              ...binCodeCondition,
-            },
-          });
         }
+        // --- CHANGE END ---
+
       } else {
+        // Case: No bin links exist for this gammeId
         binsFromDB = await bins.findAll({
           where: {
             status: {
@@ -188,10 +192,11 @@ const getBinsFromPattern = async (req, res) => {
             ...binCodeCondition,
           },
         });
-        console.log("if --------------------------------");
+        console.log("if (no binLinks) --------------------------------");
         console.log(binsFromDB);
       }
     } else {
+      // Case: No gamme record found for the partNumber
       binsFromDB = await bins.findAll({
         where: {
           project,
@@ -201,7 +206,7 @@ const getBinsFromPattern = async (req, res) => {
           ...binCodeCondition,
         },
       });
-      console.log("else 222222 --------------------------------");
+      console.log("else (no gammeFromDB) --------------------------------");
       console.log(binsFromDB);
       console.log("else binCodeCondition --------------------------------");
       console.log(binCodeCondition);
@@ -213,6 +218,7 @@ const getBinsFromPattern = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 const binsFromProjet = async (req, res) => {
   const { project, bin_code, id_user } = req.params;

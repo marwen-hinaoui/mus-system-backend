@@ -721,7 +721,7 @@ const checkMassiveStock = async (req, res) => {
   try {
     for (const element of dataQte) {
       try {
-        const key = `${element.partNumber.trim()}__${element.patternNumb.trim()}`;
+        const key = `${element.partNumber.trim()}__${element.patternNumb.trim()}__${element.bin_code?.trim()}`;
         if (seen.has(key)) {
           results.push({
             partNumber: element.partNumber?.trim(),
