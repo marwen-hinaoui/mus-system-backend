@@ -11,7 +11,7 @@ const bins = require("../models/bins");
 const { userMUS, sequelize } = require("../models");
 const updatePatternQuantite_SumService = require("../services/updatePatternQuantite_SumService");
 const { getPatternsPNSQL } = require("../services/getTypePattern");
-
+const getUserRoles = require("../middleware/getUserRoles");
 const ajoutStock = async (req, res) => {
   const currentUserId = req.user.id;
   try {
@@ -717,6 +717,7 @@ const checkMassiveStock = async (req, res) => {
     return res.status(400).json({ message: "data must be not empty!" });
   }
   const userFromDB = await userMUS.findByPk(id_userMUS);
+  const roleList = await getUserRoles(userFromDB.id);
   const seen = new Set();
   const results = [];
 
@@ -836,7 +837,8 @@ const checkMassiveStock = async (req, res) => {
                               !pattern_bin_db_check &&
                               bin_code_distination_db?.bin_code !==
                                 bin_code_db?.bin_code &&
-                              excelBinDest !== ""
+                              excelBinDest !== "" &&
+                              roleList.includes("Admin")
                             ) {
                               if (Number(element.quantiteBin?.trim()) > 0) {
                                 results.push({
@@ -894,9 +896,7 @@ const checkMassiveStock = async (req, res) => {
                                   partNumber: element.partNumber?.trim(),
                                   pattern: element.patternNumb?.trim(),
                                   updated: true,
-                                  quantiteBin: Number(
-                                    element.quantiteBin?.trim()
-                                  ),
+                                  quantiteBin: pattern_bin_db?.quantiteBin,
                                   bin_code: bin_code_db?.bin_code,
                                   bin_code_distination:
                                     bin_code_distination_db?.bin_code,
@@ -913,7 +913,8 @@ const checkMassiveStock = async (req, res) => {
                                   Number(pattern_bin_db?.quantiteBin) !==
                                     Number(element.quantiteBin?.trim()) &&
                                   Number(element.quantiteBin?.trim()) >= 0 &&
-                                  !pattern_bin_db_check
+                                  !pattern_bin_db_check &&
+                                  roleList.includes("Admin")
                                 ) {
                                   results.push({
                                     partNumber: element.partNumber?.trim(),

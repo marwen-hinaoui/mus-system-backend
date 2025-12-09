@@ -46,7 +46,7 @@ router.post(
 );
 router.post(
   "/update/massive",
-  verifyTokenAndRole(["Admin", "GESTIONNAIRE_STOCK"]),
+  verifyTokenAndRole(["Admin", "GESTIONNAIRE_STOCK", "AGENT_MUS"]),
   stockController.updateMassiveStock
 );
 router.post(
