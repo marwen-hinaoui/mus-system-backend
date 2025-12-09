@@ -10,6 +10,7 @@ const pattern_bin = require("../models/pattern_bin");
 const bins = require("../models/bins");
 const { userMUS, sequelize } = require("../models");
 const updatePatternQuantite_SumService = require("../services/updatePatternQuantite_SumService");
+const { getPatternsPNSQL } = require("../services/getTypePattern");
 
 const ajoutStock = async (req, res) => {
   const currentUserId = req.user.id;
@@ -518,7 +519,6 @@ const ajoutStockKitLeather = async (req, res) => {
 
 const getAllStock = async (req, res) => {
   try {
-    // First get all stock data
     const stockDataWithIncludes = await pattern_bin.findAll({
       attributes: ["id", "quantiteBin", "patternId"],
       include: [
@@ -544,7 +544,6 @@ const getAllStock = async (req, res) => {
       order: [["id", "DESC"]],
     });
 
-    // Then get the sums for each pattern
     const patternSums = await pattern_bin.findAll({
       attributes: [
         "patternId",
@@ -554,13 +553,12 @@ const getAllStock = async (req, res) => {
       raw: true,
     });
 
-    // Create a lookup map for pattern sums
     const sumMap = {};
     patternSums.forEach((item) => {
       sumMap[item.patternId] = item.totalQuantiteBin;
     });
-    // Format the data with the sums
-    const formattedData = stockDataWithIncludes.map((item) => ({
+
+    const formattedDataPromises = stockDataWithIncludes.map(async (item) => ({
       id: item.id,
       partNumber: item["pattern.gamme.partNumber"],
       patternNumb: item["pattern.patternNumb"],
@@ -570,8 +568,12 @@ const getAllStock = async (req, res) => {
       quantiteBin: item.quantiteBin,
       totalQuantiteBin: sumMap[item.patternId] || 0,
       bin_code: item["bins.bin_code"],
+      type: await getPatternsPNSQL(
+        item["pattern.gamme.partNumber"],
+        item["pattern.patternNumb"]
+      ),
     }));
-
+    const formattedData = await Promise.all(formattedDataPromises);
     res.status(200).json({ data: formattedData });
   } catch (error) {
     console.error("Error fetching stock:", error);
@@ -788,8 +790,11 @@ const checkMassiveStock = async (req, res) => {
                     userFromDB?.id_site === 2)
                 ) {
                   if (
-                    ["MBEAM", "N-CAR"].includes(element.projetNom?.trim()) ||
-                    ["773W", "D-CROSS"].includes(element.projetNom?.trim())
+                    (["MBEAM", "N-CAR"].includes(element.projetNom?.trim()) ||
+                      ["773W", "D-CROSS"].includes(
+                        element.projetNom?.trim()
+                      )) &&
+                    elementProject === element.projetNom?.trim()
                   ) {
                     gammeFromDB = await gamme.findOne({
                       where: { partNumber: element.partNumber?.trim() },

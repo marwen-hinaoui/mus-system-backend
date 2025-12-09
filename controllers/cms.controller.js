@@ -81,22 +81,6 @@ const getPatterns = async (req, res) => {
   }
 };
 
-// const getPatternsPN = async (req, res) => {
-//   const { cover_pn, panel_number } = req.params;
-
-//   try {
-//     const result = await getPatternsSQL.getPatternsPNSQL(
-//       cover_pn,
-//       panel_number
-//     );
-
-//     return res.json(result.recordset);
-//   } catch (err) {
-//     console.error("Error in getPartNumbers:", err);
-//     res.status(500).send("Error fetching getPartNumbers");
-//   }
-// };
-
 const getHpglCode = (req, res) => {
   const { patternPN } = req.params;
   const basePath = "G:/Eng/Table de coupe/PLT files_CTC";
@@ -120,7 +104,6 @@ module.exports = {
   getPatterns,
   getProjet,
   getMaterial,
-  // getPatternsPN,
   getHpglCode,
   getPNFromKitLeather,
 };

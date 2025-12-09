@@ -9,6 +9,7 @@ const {
   getPNFromKitLeather,
 } = require("../controllers/cms.controller");
 const verifyTokenAndRole = require("../middleware/verifyTokenAndRole");
+const { getPatternsPNSQL } = require("../services/getTypePattern");
 
 router.get(
   "/sequences/:sequence",
@@ -20,6 +21,7 @@ router.get(
   verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
   getPatterns
 );
+// router.get("/:cover_pn/:panel_number", getPatternsPNSQL);
 router.get(
   "/projet/:cover_pn",
   // verifyTokenAndRole(["Admin", "DEMANDEUR", "AGENT_MUS", "GESTIONNAIRE_STOCK"]),
