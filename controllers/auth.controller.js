@@ -7,7 +7,11 @@ const user_role_MUS = require("../models/user_role_MUS");
 const site = require("../models/site");
 const fonction = require("../models/fonction");
 const { Sequelize, Op } = require("sequelize");
-const { transporter, mailOptions } = require("../middleware/send_mail");
+const {
+  transporter,
+  mailOptions,
+  sendEmail,
+} = require("../middleware/send_mail");
 const projet = require("../models/projet");
 const user_projet = require("../models/user_projet");
 const blacklistedRefreshTokens = new Set();
@@ -126,7 +130,20 @@ const signUp = async (req, res) => {
         projetId: findProjet.id,
       });
     }
-
+    await sendEmail({
+      to: req.body.email,
+      subject: `Création session MUS`,
+      html: `
+              <h4>Détails session:</h4>
+              <span><b>Username:</b> ${username}</span>
+                <br />
+                <br />
+              <span><b>Mot de passe:</b>${req.body.password}</span>
+                <br />
+                <br />
+              Message envoyé par le système <a href="http://tnbzt-sql01:3000/">MUS</a>
+               `,
+    });
     return res.status(201).json({
       id: user_create.id,
       username: user_create.username,
@@ -278,7 +295,20 @@ const updatePassword = async (req, res) => {
 
     user.password = hashedPassword;
     await user.save();
-
+    await sendEmail({
+      to: req.body.email,
+      subject: `Mot de Passe MUS`,
+      html: `
+              <h4>Détails session:</h4>
+              <span><b>Username:</b> ${user.username}</span>
+                <br />
+                <br />
+              <span><b>Mot de passe:</b>${newPassword}</span>
+                <br />
+                <br />
+              Message envoyé par le système <a href="http://tnbzt-sql01:3000/">MUS</a>
+               `,
+    });
     return res
       .status(200)
       .json({ message: "Mot de passe mis à jour avec succès" });

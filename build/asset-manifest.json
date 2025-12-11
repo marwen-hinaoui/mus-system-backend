@@ -1,7 +1,7 @@
 {
   "files": {
     "main.css": "/static/css/main.dffc7407.css",
-    "main.js": "/static/js/main.eab37918.js",
+    "main.js": "/static/js/main.965e25d0.js",
     "static/js/453.32735df7.chunk.js": "/static/js/453.32735df7.chunk.js",
     "static/media/Roboto-Regular.ttf": "/static/media/Roboto-Regular.5dd918926d41224c8142.ttf",
     "static/media/LearLogo.png": "/static/media/LearLogo.e27cdd3fe400ab92df59.png",
@@ -26,11 +26,11 @@
     "static/media/lato-latin-ext-400-normal.woff": "/static/media/lato-latin-ext-400-normal.fb0aa12c0b659961ab32.woff",
     "index.html": "/index.html",
     "main.dffc7407.css.map": "/static/css/main.dffc7407.css.map",
-    "main.eab37918.js.map": "/static/js/main.eab37918.js.map",
+    "main.965e25d0.js.map": "/static/js/main.965e25d0.js.map",
     "453.32735df7.chunk.js.map": "/static/js/453.32735df7.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.dffc7407.css",
-    "static/js/main.eab37918.js"
+    "static/js/main.965e25d0.js"
   ]
 }
