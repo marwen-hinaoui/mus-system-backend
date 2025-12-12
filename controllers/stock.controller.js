@@ -721,6 +721,7 @@ const checkMassiveStock = async (req, res) => {
   const seen = new Set();
   const results = [];
   let row = {};
+
   try {
     for (const element of dataQte) {
       row = {
@@ -744,46 +745,74 @@ const checkMassiveStock = async (req, res) => {
         binChangement: null,
       };
       try {
-        const key = `${element.partNumber.trim()}__${element.patternNumb.trim()}__${element.bin_code?.trim()}`;
-        if (seen.has(key)) {
-          RowToken.updated = false;
-          row.reasonPN = "Pattern dupliqué";
-        }
-
-        seen.add(key);
         const excelBinDest = element.bin_code_distination?.trim() || "";
         const excelEmetteur = element.emetteur?.trim() || "";
+        const excelBin = element.bin_code?.trim() || "";
+        const excelQte = element.quantiteBin?.trim() || "";
+        const excelPattern = element.patternNumb?.trim() || "";
+        const excelSite = element.site?.trim() || "";
+        const excelPn = element.partNumber?.trim() || "";
+        ////
         let gammeFromDB;
         let patternFromDB;
+        let patternExists;
         let bin_code_db;
         let bin_code_distination_db = null;
         let site_id = element.site === "Greenfield" ? 1 : 2;
         let elementProject = await getProjetService(element.partNumber);
+        ////
+        const key = `${element.partNumber?.trim()}__${element.patternNumb?.trim()}__${element.bin_code?.trim()}`;
+        if (seen.has(key)) {
+          row.updated = false;
+          row.reasonPN = "Pattern dupliqué";
+        }
+        seen.add(key);
+        // Empty CHECK !!!!!
+        if (excelBin === "") {
+          row.updated = false;
+          row.reasonBin = "Bin not existe";
+        }
+        if (excelQte === "") {
+          row.updated = false;
+          row.reasonQTE = "Qte not exist!";
+        }
+        if (isNaN(excelQte)) {
+          row.updated = false;
+          row.reasonQTE = "Qte not a Number!";
+        }
+        if (excelPattern === "") {
+          row.updated = false;
+          row.reasonQTE = "Pattern not exist!";
+        }
+        if (excelSite === "") {
+          row.updated = false;
+          row.reasonQTE = "Site not exist!";
+        }
+        if (excelPn === "") {
+          row.updated = false;
+          row.reasonPN = "PN not existe";
+        }
 
         const checkGammeFromCMS = await getPatternsSQL(element.partNumber);
 
         if (checkGammeFromCMS.recordset.length === 0) {
           row.updated = false;
           row.reasonPN = "PN not existe";
-        }
+        } else {
+          patternExists = checkGammeFromCMS.recordset.some(
+            (record) => record.panel_number === element.patternNumb?.trim()
+          );
 
-        const patternExists = checkGammeFromCMS.recordset.some(
-          (record) => record.panel_number === element.patternNumb?.trim()
-        );
+          if (excelBinDest !== "") {
+            bin_code_distination_db = await bins.findOne({
+              where: { bin_code: excelBinDest },
+            });
+          }
 
-        if (patternExists === false) {
-          row.updated = false;
-          row.reasonBin = "Pattern not existe";
-        }
-
-        bin_code_db = await bins.findOne({
-          where: { bin_code: element.bin_code?.trim() },
-        });
-
-        if (excelBinDest !== "") {
-          bin_code_distination_db = await bins.findOne({
-            where: { bin_code: excelBinDest },
-          });
+          if (!patternExists) {
+            row.updated = false;
+            row.reasonPattern = "Pattern not existe";
+          }
         }
 
         if (excelBinDest !== "" && !bin_code_distination_db) {
@@ -791,15 +820,25 @@ const checkMassiveStock = async (req, res) => {
           row.reasonBin = "Bin de destination incorrect";
           row.bin_code_distination = excelBinDest;
         }
+
+        if (excelBin !== "") {
+          bin_code_db = await bins.findOne({
+            where: { bin_code: excelBin },
+          });
+        }
+
+        if (excelBinDest !== "") {
+          bin_code_distination_db = await bins.findOne({
+            where: { bin_code: excelBinDest },
+          });
+        }
+        //////
         if (!bin_code_db) {
           row.updated = false;
           row.reasonBin = "Bin not existe";
         }
 
-        if (userFromDB?.id_site !== site_id) {
-          row.updated = false;
-          row.reasonSite = "Site non autoriser";
-        }
+        //////
 
         if (
           !["MBEAM", "N-CAR"].includes(elementProject) &&
@@ -811,153 +850,205 @@ const checkMassiveStock = async (req, res) => {
           row.reasonProjet = "Projet non autoriser dans votre site";
         }
 
+        if (userFromDB?.id_site !== site_id) {
+          row.updated = false;
+          row.reasonSite = "Site non autoriser";
+        }
+        if (
+          !["MBEAM", "N-CAR"].includes(element.projetNom?.trim()) &&
+          !["773W", "D-CROSS"].includes(element.projetNom?.trim())
+        ) {
+          row.updated = false;
+          row.reasonProjet = "Projet incorrect";
+        }
         if (elementProject !== element.projetNom?.trim()) {
           row.updated = false;
           row.reasonProjet = "Projet incorrect";
         }
 
-        gammeFromDB = await gamme.findOne({
-          where: { partNumber: element.partNumber?.trim() },
-        });
-
-        if (!gammeFromDB) {
-          if (!excelEmetteur || excelEmetteur.trim().length === 0) {
-            row.updated = false;
-            row.reasonEmetteur = "Emetteur obligatoire!";
-            row.emetteur = excelEmetteur;
-          }
-
-          if (Number(element.quantiteBin?.trim()) <= 0) {
-            row.updated = false;
-            row.reasonPN = "PN not exist and new qte <= 0";
-          } else {
-            row.newPattern = true;
-            row.updated = true;
-            row.emetteur = excelEmetteur.trim();
-          }
-        }
-
-        patternFromDB = await pattern.findOne({
-          where: {
-            id_gamme: gammeFromDB.id,
-            patternNumb: element.patternNumb?.trim(),
-          },
-        });
-
-        if (!patternFromDB) {
-          if (!excelEmetteur || excelEmetteur.trim().length === 0) {
-            row.emetteur = excelEmetteur;
-            row.updated = false;
-            row.reasonEmetteur = "Emetteur obligatoire!";
-          }
-
-          if (Number(element.quantiteBin?.trim()) <= 0) {
-            row.updated = false;
-            row.reasonPN = "PN not exist and new qte <= 0";
-          }
-
-          row.newPattern = true;
-          row.updated = true;
-          row.emetteur = excelEmetteur.trim();
-        }
-
-        const pattern_bin_db = await pattern_bin.findOne({
-          where: {
-            gammeId: gammeFromDB?.id,
-            patternId: patternFromDB?.id,
-            binId: bin_code_db?.id,
-          },
-        });
-        let pattern_bin_db_check;
-
-        if (bin_code_distination_db?.id) {
-          pattern_bin_db_check = await pattern_bin.findOne({
-            where: {
-              gammeId: gammeFromDB.id,
-              patternId: patternFromDB.id,
-              binId: bin_code_distination_db.id,
-            },
+        if (bin_code_db) {
+          gammeFromDB = await gamme.findOne({
+            where: { partNumber: element.partNumber?.trim() },
           });
-        }
-        if (Number(element.quantiteBin?.trim()) < 0) {
-          row.updated = false;
-          row.reasonQTE = "Qte < 0";
-        }
-        if (
-          Number(pattern_bin_db?.quantiteBin) !==
-            Number(element.quantiteBin?.trim()) &&
-          !pattern_bin_db_check &&
-          bin_code_distination_db?.bin_code !== bin_code_db?.bin_code &&
-          excelBinDest !== "" &&
-          roleList.includes("Admin")
-        ) {
-          if (Number(element.quantiteBin?.trim()) > 0) {
-            row.updated = true;
-            row.bin_code_distination = bin_code_distination_db?.bin_code;
-            row.bin_code = bin_code_db?.bin_code;
-            row.updatedBin = true;
-            row.updatedQte = true;
-            row.qteChangement = [
-              pattern_bin_db?.quantiteBin,
-              Number(element.quantiteBin?.trim()),
-            ];
-            row.binChangement = [
-              bin_code_db?.bin_code,
-              bin_code_distination_db?.bin_code,
-            ];
-          } else {
-            row.binChangement = [
-              bin_code_db?.bin_code,
-              bin_code_distination_db?.bin_code,
-            ];
-            row.updated = false;
-            row.reasonQTE = "Impossible de migrer qte 0";
-          }
-        } else {
-          if (
-            bin_code_distination_db?.bin_code !== bin_code_db?.bin_code &&
-            !pattern_bin_db_check &&
-            excelBinDest !== ""
-          ) {
-            row.updated = true;
-            row.updatedBin = true;
-            row.binChangement = [
-              bin_code_db?.bin_code,
-              bin_code_distination_db?.bin_code,
-            ];
-            row.quantiteBin = pattern_bin_db?.quantiteBin;
-            row.bin_code = bin_code_db?.bin_code;
-            row.bin_code_distination = bin_code_distination_db?.bin_code;
-          } else {
-            if (
-              Number(pattern_bin_db?.quantiteBin) !==
-                Number(element.quantiteBin?.trim()) &&
-              Number(element.quantiteBin?.trim()) >= 0 &&
-              !pattern_bin_db_check &&
-              roleList.includes("Admin")
-            ) {
+
+          if (gammeFromDB) {
+            patternFromDB = await pattern.findOne({
+              where: {
+                id_gamme: gammeFromDB.id,
+                patternNumb: element.patternNumb?.trim(),
+              },
+            });
+
+            if (patternFromDB) {
+              const pattern_bin_db = await pattern_bin.findOne({
+                where: {
+                  gammeId: gammeFromDB?.id,
+                  patternId: patternFromDB?.id,
+                  binId: bin_code_db?.id,
+                },
+              });
+              let pattern_bin_db_check;
+
+              if (bin_code_distination_db?.id) {
+                pattern_bin_db_check = await pattern_bin.findOne({
+                  where: {
+                    gammeId: gammeFromDB.id,
+                    patternId: patternFromDB.id,
+                    binId: bin_code_distination_db.id,
+                  },
+                });
+              }
+              if (pattern_bin_db) {
+                if (Number(element.quantiteBin?.trim()) >= 0) {
+                  if (
+                    Number(pattern_bin_db?.quantiteBin) !==
+                      Number(element.quantiteBin?.trim()) &&
+                    !pattern_bin_db_check &&
+                    bin_code_distination_db?.bin_code !==
+                      bin_code_db?.bin_code &&
+                    excelBinDest !== "" &&
+                    roleList.includes("Admin")
+                  ) {
+                    if (
+                      Number(element.quantiteBin?.trim()) > 0 &&
+                      elementProject === element.projetNom?.trim()
+                    ) {
+                      row.updated = true;
+                      row.bin_code_distination =
+                        bin_code_distination_db?.bin_code;
+                      row.bin_code = bin_code_db?.bin_code;
+                      row.updatedBin = true;
+                      row.updatedQte = true;
+                      row.qteChangement = [
+                        pattern_bin_db?.quantiteBin,
+                        Number(element.quantiteBin?.trim()),
+                      ];
+                      row.binChangement = [
+                        bin_code_db?.bin_code,
+                        bin_code_distination_db?.bin_code,
+                      ];
+                    } else {
+                      row.binChangement = [
+                        bin_code_db?.bin_code,
+                        bin_code_distination_db?.bin_code,
+                      ];
+                      row.updated = false;
+                      row.reasonQTE = "Impossible de migrer qte 0";
+                      // continue;
+                    }
+                  } else {
+                    if (
+                      bin_code_distination_db?.bin_code !==
+                        bin_code_db?.bin_code &&
+                      !pattern_bin_db_check &&
+                      excelBinDest !== "" &&
+                      elementProject === element.projetNom?.trim()
+                    ) {
+                      row.updated = true;
+                      row.updatedBin = true;
+                      row.binChangement = [
+                        bin_code_db?.bin_code,
+                        bin_code_distination_db?.bin_code,
+                      ];
+                      row.quantiteBin = pattern_bin_db?.quantiteBin;
+                      row.bin_code = bin_code_db?.bin_code;
+                      row.bin_code_distination =
+                        bin_code_distination_db?.bin_code;
+                    } else {
+                      if (
+                        Number(pattern_bin_db?.quantiteBin) !==
+                          Number(element.quantiteBin?.trim()) &&
+                        Number(element.quantiteBin?.trim()) >= 0 &&
+                        !pattern_bin_db_check &&
+                        roleList.includes("Admin") &&
+                        elementProject === element.projetNom?.trim()
+                      ) {
+                        row.updated = true;
+                        row.updatedQte = true;
+                        row.qteChangement = [
+                          pattern_bin_db?.quantiteBin,
+                          Number(element.quantiteBin?.trim()),
+                        ];
+                        row.bin_code = bin_code_db?.bin_code;
+                        // row.bin_code_distination =
+                        //   bin_code_distination_db?.bin_code;
+                      }
+                    }
+                  }
+                } else {
+                  row.updated = false;
+                  row.reasonQTE = "Qte < 0";
+                  continue;
+                }
+              } else {
+                row.updated = false;
+                row.reasonBin =
+                  "Bin de distination doit étre dans la colonne Bin distination";
+              }
+            } else {
+              // Pattern doesn't exist - check emetteur FIRST
+              if (!excelEmetteur || excelEmetteur.trim().length === 0) {
+                row.updated = false;
+                row.reasonEmetteur = "Emetteur obligatoire!";
+                row.emetteur = excelEmetteur;
+              }
+
+              if (Number(element.quantiteBin?.trim()) <= 0) {
+                row.updated = false;
+                row.reasonPN = "PN not exist and new qte <= 0";
+                continue;
+              }
+              console.log(
+                "--------------------------------AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA----------------------------------------------------------------"
+              );
+
+              row.newPattern = true;
               row.updated = true;
-              row.updatedQte = true;
-              row.qteChangement = [
-                pattern_bin_db?.quantiteBin,
-                Number(element.quantiteBin?.trim()),
-              ];
-              row.bin_code = bin_code_db?.bin_code;
-              // row.bin_code_distination =
-              //   bin_code_distination_db?.bin_code;
+              row.emetteur = excelEmetteur.trim();
+            }
+          } else {
+            if (checkGammeFromCMS.recordset.length > 0 && patternExists) {
+              if (Number(element.quantiteBin?.trim()) <= 0) {
+                row.updated = false;
+                row.reasonPN = "PN not exist and new qte <= 0";
+                continue;
+              } else {
+                console.log(
+                  "--------------------------------BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB----------------------------------------------------------------"
+                );
+
+                row.newPattern = true;
+                row.updated = true;
+                row.emetteur = excelEmetteur.trim();
+                if (!excelEmetteur || excelEmetteur.trim().length === 0) {
+                  row.emetteur = excelEmetteur;
+                  row.updated = false;
+                  row.reasonEmetteur = "Emetteur obligatoire!";
+                  row.newPattern = null;
+                }
+              }
             }
           }
         }
       } catch (error) {
         console.log("Error updating element:", element, error);
+        results.push({
+          partNumber: element.partNumber?.trim(),
+          pattern: element.patternNumb?.trim(),
+          projetNom: element.projetNom?.trim(),
+          site: element.site?.trim(),
+          updated: false,
+          bin_code: element.bin_code?.trim(),
+          quantiteBin: Number(element.quantiteBin?.trim()),
+          error: error.message,
+        });
       }
+      results.push(row);
     }
-    results.push(row);
-    const updated = results.filter((r) => r.updated).length;
+    const updated = results.filter((r) => r.updated !== null);
     res.status(200).json({
       message: "Check process completed",
-      updated,
-      details: results,
+      details: updated,
     });
   } catch (error) {
     console.error("Massive update error:", error);
@@ -967,7 +1058,6 @@ const checkMassiveStock = async (req, res) => {
     });
   }
 };
-
 const updateMassiveStock = async (req, res) => {
   const { dataQte, id_userMUS } = req.body;
 
