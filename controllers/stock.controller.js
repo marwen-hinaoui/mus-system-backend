@@ -732,7 +732,6 @@ const checkMassiveStock = async (req, res) => {
         bin_code: element.bin_code?.trim(),
         bin_code_distination: element.bin_code_distination?.trim() || null,
         quantiteBin: Number(element.quantiteBin?.trim()),
-        emetteur: element.emetteur?.trim() || "",
         updated: null,
         reasonPN: null,
         reasonPattern: null,
@@ -740,13 +739,13 @@ const checkMassiveStock = async (req, res) => {
         reasonSite: null,
         reasonBin: null,
         reasonQTE: null,
-        reasonEmetteur: null,
         qteChangement: null,
         binChangement: null,
+        inc: null,
+        dec: null,
       };
       try {
         const excelBinDest = element.bin_code_distination?.trim() || "";
-        const excelEmetteur = element.emetteur?.trim() || "";
         const excelBin = element.bin_code?.trim() || "";
         const excelQte = element.quantiteBin?.trim() || "";
         const excelPattern = element.patternNumb?.trim() || "";
@@ -913,6 +912,14 @@ const checkMassiveStock = async (req, res) => {
                       Number(element.quantiteBin?.trim()) > 0 &&
                       elementProject === element.projetNom?.trim()
                     ) {
+                      if (
+                        pattern_bin_db?.quantiteBin <
+                        Number(element.quantiteBin?.trim())
+                      ) {
+                        row.inc = true;
+                      } else {
+                        row.dec = true;
+                      }
                       row.updated = true;
                       row.bin_code_distination =
                         bin_code_distination_db?.bin_code;
@@ -963,6 +970,14 @@ const checkMassiveStock = async (req, res) => {
                         roleList.includes("Admin") &&
                         elementProject === element.projetNom?.trim()
                       ) {
+                        if (
+                          pattern_bin_db?.quantiteBin <
+                          Number(element.quantiteBin?.trim())
+                        ) {
+                          row.inc = true;
+                        } else {
+                          row.dec = true;
+                        }
                         row.updated = true;
                         row.updatedQte = true;
                         row.qteChangement = [
@@ -986,12 +1001,7 @@ const checkMassiveStock = async (req, res) => {
                   "Bin de distination doit étre dans la colonne Bin distination";
               }
             } else {
-              // Pattern doesn't exist - check emetteur FIRST
-              if (!excelEmetteur || excelEmetteur.trim().length === 0) {
-                row.updated = false;
-                row.reasonEmetteur = "Emetteur obligatoire!";
-                row.emetteur = excelEmetteur;
-              }
+              // Pattern doesn't exist
 
               if (Number(element.quantiteBin?.trim()) <= 0) {
                 row.updated = false;
@@ -1004,7 +1014,6 @@ const checkMassiveStock = async (req, res) => {
 
               row.newPattern = true;
               row.updated = true;
-              row.emetteur = excelEmetteur.trim();
             }
           } else {
             if (checkGammeFromCMS.recordset.length > 0 && patternExists) {
@@ -1019,13 +1028,6 @@ const checkMassiveStock = async (req, res) => {
 
                 row.newPattern = true;
                 row.updated = true;
-                row.emetteur = excelEmetteur.trim();
-                if (!excelEmetteur || excelEmetteur.trim().length === 0) {
-                  row.emetteur = excelEmetteur;
-                  row.updated = false;
-                  row.reasonEmetteur = "Emetteur obligatoire!";
-                  row.newPattern = null;
-                }
               }
             }
           }
@@ -1082,7 +1084,6 @@ const updateMassiveStock = async (req, res) => {
         let bin_code_distination_db;
         let gammeFromDB;
         let patternFromDB;
-        const excelEmetteur = element.emetteur?.trim() || "";
 
         if (element.bin_code) {
           bin_code_db = await bins.findOne({
@@ -1103,8 +1104,12 @@ const updateMassiveStock = async (req, res) => {
         gammeFromDB = await gamme.findOne({
           where: { partNumber: element.partNumber?.trim() || "" },
         });
+        let materialFromService = await getMaterialService(
+          element.partNumber?.trim(),
+          element.pattern?.trim()
+        );
 
-        if (element.newPattern && excelEmetteur !== "") {
+        if (element.newPattern) {
           if (!gammeFromDB) {
             gammeFromDB = await gamme.create({
               sequence: "N/A",
@@ -1112,11 +1117,6 @@ const updateMassiveStock = async (req, res) => {
               projetNom: element.projetNom?.trim() || "",
             });
           }
-
-          let materialFromService = await getMaterialService(
-            element.partNumber?.trim(),
-            element.pattern?.trim()
-          );
 
           let materialFromDB = null;
           if (materialFromService) {
@@ -1161,10 +1161,6 @@ const updateMassiveStock = async (req, res) => {
             bin_code_db.status = "Réservé";
             await bin_code_db.save();
           }
-          console.log(
-            "-------------------------- excelEmetteur -----------------------------",
-            excelEmetteur
-          );
 
           await mouvementCreation(
             "N/A",
@@ -1177,7 +1173,7 @@ const updateMassiveStock = async (req, res) => {
             id_userMUS,
             bin_code_db?.bin_code,
             "N/A",
-            excelEmetteur,
+            `${userFromDB?.firstName} ${userFromDB?.lastName}`, /// -------------------------------------------------- USER SESSISON
             userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
           );
           results.push({
@@ -1293,6 +1289,51 @@ const updateMassiveStock = async (req, res) => {
               }
             }
 
+            if (element.inc) {
+              await mouvementCreation(
+                "N/A",
+                gammeFromDB.partNumber,
+                patternFromDB.patternNumb,
+                materialFromService.part_number_material,
+                Number(element.quantiteBin),
+                "Introduite",
+                gammeFromDB.projetNom,
+                id_userMUS,
+                bin_code_db?.bin_code,
+                "N/A",
+                `${userFromDB?.firstName} ${userFromDB?.lastName}`,
+                userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
+              );
+            }
+            console.log(
+              "element.qteChangement[1] ------------------------------------",
+              element.qteChangement[1]
+            );
+            console.log(
+              "element.qteChangement[0] ------------------------------------",
+              element.qteChangement[0]
+            );
+
+            if (element.dec) {
+              let delivered = Math.abs(
+                element?.qteChangement[1] - element?.qteChangement[0]
+              );
+
+              await mouvementCreation(
+                "N/A",
+                gammeFromDB.partNumber,
+                patternFromDB.patternNumb,
+                materialFromService.part_number_material,
+                delivered,
+                "Livré",
+                gammeFromDB.projetNom,
+                id_userMUS,
+                bin_code_db?.bin_code,
+                "N/A",
+                `Massive upload`,
+                userFromDB?.id_site === 1 ? "Greenfield" : "Brownfield"
+              );
+            }
             const { patternUpdated, totalQuantite } =
               await updatePatternQuantite_SumService(
                 patternFromDB?.id,
