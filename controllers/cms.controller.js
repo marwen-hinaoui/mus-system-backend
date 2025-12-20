@@ -52,7 +52,7 @@ const getProjet = async (req, res) => {
     console.error("Error in getProjet:", err);
     res.status(500).send("Error fetching getProjet");
   }
-};
+};  
 
 const getMaterial = async (req, res) => {
   const { cover_pn, panel_number } = req.params;
@@ -83,8 +83,10 @@ const getPatterns = async (req, res) => {
 
 const getHpglCode = (req, res) => {
   const { patternPN } = req.params;
-  const basePath = "G:/Eng/Table de coupe/PLT files_CTC";
+  const basePath = "\\\\tnbzt-fp01\\Groups\\Eng\\Table de coupe\\PLT files_CTC";
   const filePath = path.join(basePath, `${patternPN}.plt`);
+
+  console.log(basePath, "-----------------------------------------------");
 
   if (!fs.existsSync(filePath)) {
     return res.status(404).json({ error: "Fichier non trouvé" });

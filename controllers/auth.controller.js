@@ -135,7 +135,7 @@ const signUp = async (req, res) => {
       subject: `Création session MUS`,
       html: `
               <h4>Détails session:</h4>
-              <span><b>Username:</b> ${username}</span>
+              <span><b>Username:</b> ${req.body.username}</span>
                 <br />
                 <br />
               <span><b>Mot de passe:</b>${req.body.password}</span>
