@@ -144,6 +144,7 @@ const createDemande = async (req, res) => {
               <p>Numéro de demande: <b>${newDemande.numDemande}</b></p>
               <h4>Détails:</h4>
               ${buildTable(createdSubs)}
+              
                `,
         });
       }

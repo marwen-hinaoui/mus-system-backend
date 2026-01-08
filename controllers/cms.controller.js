@@ -1,9 +1,8 @@
-const path = require("path");
-const fs = require("fs");
 const { getPool } = require("../config/db_plt");
 const getPatternsSQL = require("../middleware/sqlQuery");
 const getProjetService = require("../services/getProjetService");
 const getMaterialService = require("../services/getMaterialService");
+const { getHpglCodeService } = require("../services/getHpglCodeService");
 
 const getPNFromSequences = async (req, res) => {
   const { sequence } = req.params;
@@ -52,7 +51,7 @@ const getProjet = async (req, res) => {
     console.error("Error in getProjet:", err);
     res.status(500).send("Error fetching getProjet");
   }
-};  
+};
 
 const getMaterial = async (req, res) => {
   const { cover_pn, panel_number } = req.params;
@@ -83,17 +82,9 @@ const getPatterns = async (req, res) => {
 
 const getHpglCode = (req, res) => {
   const { patternPN } = req.params;
-  const basePath = "\\\\tnbzt-fp01\\Groups\\Eng\\Table de coupe\\PLT files_CTC";
-  const filePath = path.join(basePath, `${patternPN}.plt`);
-
-  console.log(basePath, "-----------------------------------------------");
-
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).json({ error: "Fichier non trouvé" });
-  }
 
   try {
-    const hpglCode = fs.readFileSync(filePath, "utf8");
+    const hpglCode = getHpglCodeService(patternPN);
     res.json({ hpglCode });
   } catch (err) {
     console.error(err);
